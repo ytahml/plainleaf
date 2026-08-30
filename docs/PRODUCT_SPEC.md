@@ -36,10 +36,11 @@ Plainleaf lists directories and files ending in `.md`, `.markdown`, or `.mdown`.
 
 ## Visual language
 
-- Paper: warm ivory canvas, dark ink text, low-saturation moss accent
-- Ink: charcoal canvas, soft ivory text, adjusted moss accent
-- UI: SF Pro; source: SF Mono; reading: New York; code: SF Mono
-- One collapsible sidebar, one content surface, and a quiet toolbar
+- Paper: pressed-fiber desk, pale rice-paper surfaces, graphite text, fern accent, and a restrained copper warning color
+- Ink: deep green-charcoal desk and surfaces, soft ivory text, adjusted fern, and warm copper
+- UI: SF Pro; source and utility labels: SF Mono; reading: New York; code: SF Mono
+- One collapsible library sidebar, one centered paper surface, a document header, and a quiet toolbar
+- The selected-file bookmark and the reading-mode heading rule share a leaf-vein motif
 - Theme follows the system by default and can be fixed to Paper or Ink
 
 ## Data and privacy

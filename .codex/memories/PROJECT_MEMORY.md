@@ -21,6 +21,7 @@
 - Highlight fenced code with HighlighterSwift 3.1.x.
 - Do not execute raw HTML. Do not fetch remote resources automatically.
 - Save UTF-8 using atomic replacement only after confirming the disk fingerprint still matches the loaded revision.
+- The interface uses an "editor's desk" visual system: a pressed-fiber canvas, centered rice-paper document surfaces, a library-like sidebar, and a shared leaf-vein marker for file selection and level-one reading headings. SF Pro, SF Mono, and New York keep the typography native to macOS 15.
 - The source repository is public at `https://github.com/ytahml/plainleaf` as of 2026-08-30. This does not authorize a binary release, notarization, App Store submission, or deployment.
 
 ## Verification boundary

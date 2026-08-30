@@ -22,7 +22,7 @@ struct SourceEditor: NSViewRepresentable {
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = true
-        scrollView.backgroundColor = theme.canvas
+        scrollView.backgroundColor = theme.surface
 
         let textView = NSTextView(frame: .zero)
         textView.delegate = context.coordinator
@@ -33,8 +33,9 @@ struct SourceEditor: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.allowsUndo = true
         textView.usesFindBar = true
-        textView.textContainerInset = NSSize(width: 34, height: 30)
+        textView.textContainerInset = NSSize(width: 50, height: 42)
         textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
@@ -58,7 +59,7 @@ struct SourceEditor: NSViewRepresentable {
             textView.setSelectedRange(NSRange(location: min(selection.location, (text as NSString).length), length: 0))
             context.coordinator.isApplyingAttributes = false
         }
-        scrollView.backgroundColor = theme.canvas
+        scrollView.backgroundColor = theme.surface
         context.coordinator.applyHighlighting(theme: theme)
     }
 
@@ -94,19 +95,19 @@ struct SourceEditor: NSViewRepresentable {
             let selection = textView.selectedRanges
             let baseFont = NSFont.monospacedSystemFont(ofSize: 14.5, weight: .regular)
             let paragraph = NSMutableParagraphStyle()
-            paragraph.lineSpacing = 4
+            paragraph.lineSpacing = 4.5
 
             isApplyingAttributes = true
             storage.beginEditing()
             storage.setAttributes([
                 .font: baseFont,
                 .foregroundColor: theme.text,
-                .backgroundColor: theme.canvas,
+                .backgroundColor: theme.surface,
                 .paragraphStyle: paragraph
             ], range: fullRange)
 
             apply(pattern: #"(?m)^(#{1,6})(\s+.*)$"#, color: theme.accent, font: .boldSystemFont(ofSize: 14.5), to: storage)
-            apply(pattern: #"(?m)^\s*>.*$"#, color: theme.secondaryText, font: nil, to: storage)
+            apply(pattern: #"(?m)^\s*>.*$"#, color: theme.warmAccent, font: nil, to: storage)
             apply(pattern: #"(?m)^\s*(?:[-+*]|\d+\.)\s+"#, color: theme.accent, font: nil, to: storage)
             apply(pattern: #"(?s)```.*?```"#, color: theme.text, font: baseFont, background: theme.codeBackground, to: storage)
             apply(pattern: #"`[^`\n]+`"#, color: theme.accent, font: baseFont, background: theme.codeBackground, to: storage)
@@ -116,12 +117,16 @@ struct SourceEditor: NSViewRepresentable {
 
             storage.endEditing()
             textView.selectedRanges = selection
-            textView.backgroundColor = theme.canvas
+            textView.backgroundColor = theme.surface
             textView.insertionPointColor = theme.accent
+            textView.selectedTextAttributes = [
+                .backgroundColor: theme.selection,
+                .foregroundColor: theme.text
+            ]
             textView.typingAttributes = [
                 .font: baseFont,
                 .foregroundColor: theme.text,
-                .backgroundColor: theme.canvas,
+                .backgroundColor: theme.surface,
                 .paragraphStyle: paragraph
             ]
             isApplyingAttributes = false

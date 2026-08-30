@@ -29,29 +29,35 @@ struct PlainleafTheme: Equatable {
     let text: NSColor
     let secondaryText: NSColor
     let accent: NSColor
+    let warmAccent: NSColor
     let border: NSColor
     let codeBackground: NSColor
+    let selection: NSColor
 
     static let paper = PlainleafTheme(
         isDark: false,
-        canvas: NSColor(calibratedRed: 0.969, green: 0.949, blue: 0.902, alpha: 1),
-        surface: NSColor(calibratedRed: 0.988, green: 0.976, blue: 0.941, alpha: 1),
-        text: NSColor(calibratedRed: 0.145, green: 0.137, blue: 0.118, alpha: 1),
-        secondaryText: NSColor(calibratedRed: 0.39, green: 0.37, blue: 0.32, alpha: 1),
-        accent: NSColor(calibratedRed: 0.24, green: 0.39, blue: 0.29, alpha: 1),
-        border: NSColor(calibratedRed: 0.79, green: 0.76, blue: 0.68, alpha: 1),
-        codeBackground: NSColor(calibratedRed: 0.925, green: 0.902, blue: 0.842, alpha: 1)
+        canvas: NSColor(calibratedRed: 0.910, green: 0.894, blue: 0.855, alpha: 1),
+        surface: NSColor(calibratedRed: 0.973, green: 0.961, blue: 0.925, alpha: 1),
+        text: NSColor(calibratedRed: 0.145, green: 0.157, blue: 0.137, alpha: 1),
+        secondaryText: NSColor(calibratedRed: 0.390, green: 0.404, blue: 0.363, alpha: 1),
+        accent: NSColor(calibratedRed: 0.243, green: 0.420, blue: 0.302, alpha: 1),
+        warmAccent: NSColor(calibratedRed: 0.659, green: 0.365, blue: 0.224, alpha: 1),
+        border: NSColor(calibratedRed: 0.782, green: 0.757, blue: 0.698, alpha: 1),
+        codeBackground: NSColor(calibratedRed: 0.910, green: 0.894, blue: 0.855, alpha: 1),
+        selection: NSColor(calibratedRed: 0.824, green: 0.855, blue: 0.792, alpha: 1)
     )
 
     static let ink = PlainleafTheme(
         isDark: true,
-        canvas: NSColor(calibratedRed: 0.095, green: 0.092, blue: 0.084, alpha: 1),
-        surface: NSColor(calibratedRed: 0.125, green: 0.12, blue: 0.108, alpha: 1),
-        text: NSColor(calibratedRed: 0.91, green: 0.885, blue: 0.82, alpha: 1),
-        secondaryText: NSColor(calibratedRed: 0.67, green: 0.64, blue: 0.57, alpha: 1),
-        accent: NSColor(calibratedRed: 0.47, green: 0.65, blue: 0.50, alpha: 1),
-        border: NSColor(calibratedRed: 0.26, green: 0.25, blue: 0.22, alpha: 1),
-        codeBackground: NSColor(calibratedRed: 0.075, green: 0.073, blue: 0.068, alpha: 1)
+        canvas: NSColor(calibratedRed: 0.098, green: 0.110, blue: 0.098, alpha: 1),
+        surface: NSColor(calibratedRed: 0.137, green: 0.149, blue: 0.129, alpha: 1),
+        text: NSColor(calibratedRed: 0.906, green: 0.898, blue: 0.859, alpha: 1),
+        secondaryText: NSColor(calibratedRed: 0.604, green: 0.620, blue: 0.565, alpha: 1),
+        accent: NSColor(calibratedRed: 0.471, green: 0.627, blue: 0.506, alpha: 1),
+        warmAccent: NSColor(calibratedRed: 0.816, green: 0.506, blue: 0.349, alpha: 1),
+        border: NSColor(calibratedRed: 0.235, green: 0.251, blue: 0.220, alpha: 1),
+        codeBackground: NSColor(calibratedRed: 0.086, green: 0.098, blue: 0.082, alpha: 1),
+        selection: NSColor(calibratedRed: 0.196, green: 0.267, blue: 0.208, alpha: 1)
     )
 
     static func resolve(_ preference: ThemePreference, systemAppearance: NSAppearance?) -> PlainleafTheme {
@@ -71,6 +77,8 @@ struct PlainleafTheme: Equatable {
     var textColor: Color { Color(nsColor: text) }
     var secondaryTextColor: Color { Color(nsColor: secondaryText) }
     var accentColor: Color { Color(nsColor: accent) }
+    var warmAccentColor: Color { Color(nsColor: warmAccent) }
     var borderColor: Color { Color(nsColor: border) }
     var codeBackgroundColor: Color { Color(nsColor: codeBackground) }
+    var selectionColor: Color { Color(nsColor: selection) }
 }

@@ -27,9 +27,19 @@ struct MarkdownReaderView: View {
                 workspaceURL: workspaceURL,
                 theme: theme
             )
-            .frame(maxWidth: 760, alignment: .leading)
-            .padding(.horizontal, 54)
-            .padding(.vertical, 48)
+            .frame(maxWidth: 720, alignment: .leading)
+            .padding(.horizontal, 66)
+            .padding(.vertical, 62)
+            .frame(maxWidth: 852, minHeight: 620, alignment: .topLeading)
+            .background(theme.surfaceColor)
+            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .stroke(theme.borderColor.opacity(0.65), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(theme.isDark ? 0.20 : 0.08), radius: 14, y: 6)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 22)
             .frame(maxWidth: .infinity, alignment: .top)
         }
         .background(theme.canvasColor)
@@ -111,9 +121,23 @@ private struct RenderedBlockView: View {
     var body: some View {
         switch block.kind {
         case let .heading(level, runs):
-            InlineTextView(runs: runs, theme: theme, role: .heading(level))
-                .padding(.top, level == 1 ? 8 : 4)
+            if level == 1 {
+                HStack(alignment: .top, spacing: 17) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(theme.accentColor)
+                        .frame(width: 4, height: 38)
+                        .padding(.top, 4)
+                        .accessibilityHidden(true)
+                    InlineTextView(runs: runs, theme: theme, role: .heading(level))
+                }
+                .padding(.top, 8)
+                .padding(.bottom, 5)
                 .accessibilityAddTraits(.isHeader)
+            } else {
+                InlineTextView(runs: runs, theme: theme, role: .heading(level))
+                    .padding(.top, 7)
+                    .accessibilityAddTraits(.isHeader)
+            }
         case let .paragraph(runs):
             InlineTextView(runs: runs, theme: theme, role: .body)
         case let .image(source, alt):
@@ -129,7 +153,7 @@ private struct RenderedBlockView: View {
         case let .blockQuote(children):
             HStack(alignment: .top, spacing: 14) {
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(theme.accentColor)
+                    .fill(theme.warmAccentColor)
                     .frame(width: 3)
                 RenderedBlocksView(
                     blocks: children,
@@ -139,7 +163,9 @@ private struct RenderedBlockView: View {
                 )
             }
             .padding(.vertical, 4)
-            .padding(.trailing, 12)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(theme.warmAccentColor.opacity(theme.isDark ? 0.09 : 0.06))
         case let .unorderedList(items):
             MarkdownList(
                 items: items,
@@ -172,7 +198,11 @@ private struct RenderedBlockView: View {
             .padding(13)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.codeBackgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .overlay {
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(theme.borderColor.opacity(0.7), lineWidth: 1)
+            }
         }
     }
 }
@@ -247,10 +277,10 @@ private struct MarkdownTable: View {
                 }
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 4)
                     .stroke(theme.borderColor, lineWidth: 1)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .accessibilityLabel("Markdown table")
     }
@@ -260,7 +290,7 @@ private struct MarkdownTable: View {
             .frame(minWidth: 130, alignment: alignment(for: column))
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
-            .background(isHeader ? theme.accentColor.opacity(0.10) : Color.clear)
+            .background(isHeader ? theme.selectionColor : Color.clear)
     }
 
     private func alignment(for column: Int) -> Alignment {
@@ -287,7 +317,7 @@ private struct SafeLocalImage: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: 720, maxHeight: 560)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
                 if !alt.isEmpty {
                     Text(alt)
                         .font(.caption)
@@ -310,7 +340,7 @@ private struct SafeLocalImage: View {
             .padding(13)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.codeBackgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
         }
     }
 
@@ -336,11 +366,21 @@ private struct HighlightedCodeBlock: View {
     @State private var highlighted: AttributedString?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let language, !language.isEmpty {
-                Text(language.uppercased())
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(theme.secondaryTextColor)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 7) {
+                Circle()
+                    .fill(theme.warmAccentColor)
+                    .frame(width: 6, height: 6)
+                Text(language?.isEmpty == false ? language!.uppercased() : "CODE")
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .tracking(1)
+                Spacer()
+            }
+            .foregroundStyle(theme.secondaryTextColor)
+            .padding(.horizontal, 14)
+            .frame(height: 33)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(theme.borderColor.opacity(0.65)).frame(height: 1)
             }
             ScrollView(.horizontal) {
                 Group {
@@ -354,13 +394,13 @@ private struct HighlightedCodeBlock: View {
                 .textSelection(.enabled)
                 .fixedSize(horizontal: true, vertical: false)
             }
+            .padding(14)
         }
-        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(theme.codeBackgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
         .overlay {
-            RoundedRectangle(cornerRadius: 9)
+            RoundedRectangle(cornerRadius: 4)
                 .stroke(theme.borderColor.opacity(0.7), lineWidth: 1)
         }
         .onAppear(perform: renderHighlight)
@@ -465,9 +505,9 @@ private struct InlineTextView: View {
 
     private var baseSize: CGFloat {
         switch role {
-        case .body: 18
-        case let .heading(level): [0, 34, 27, 23, 20, 18, 17][min(max(level, 1), 6)]
-        case .tableHeader, .tableCell: 15
+        case .body: 17.5
+        case let .heading(level): [0, 38, 28, 23, 20, 18, 17][min(max(level, 1), 6)]
+        case .tableHeader, .tableCell: 14.5
         }
     }
 
@@ -499,7 +539,7 @@ private struct InlineTextView: View {
 
     private var roleLineSpacing: CGFloat {
         switch role {
-        case .body: 7
+        case .body: 6
         case .heading: 3
         case .tableHeader, .tableCell: 3
         }
