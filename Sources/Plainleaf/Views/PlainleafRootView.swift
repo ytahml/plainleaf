@@ -38,7 +38,7 @@ struct PlainleafRootView: View {
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .help("Choose Paper, Ink, or follow the system appearance")
+                .help("Choose Flexoki Light, Flexoki Dark, or follow the system appearance")
             }
         }
         .alert("Plainleaf", isPresented: Binding(

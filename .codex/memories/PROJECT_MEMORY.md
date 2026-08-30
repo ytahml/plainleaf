@@ -21,7 +21,7 @@
 - Highlight fenced code with HighlighterSwift 3.1.x.
 - Do not execute raw HTML. Do not fetch remote resources automatically.
 - Save UTF-8 using atomic replacement only after confirming the disk fingerprint still matches the loaded revision.
-- The interface uses an "editor's desk" visual system: a pressed-fiber canvas, centered rice-paper document surfaces, a library-like sidebar, and a shared leaf-vein marker for file selection and level-one reading headings. SF Pro, SF Mono, and New York keep the typography native to macOS 15.
+- The interface uses a focused editor's-desk layout with centered document surfaces and a shared leaf-vein marker for file selection and level-one reading headings. Its light/dark colors adapt the MIT-licensed Flexoki palette for prose and code. SF Pro and SF Mono remain native UI/editor faces; reading uses macOS Charter with PingFang SC and system fallbacks for comfortable mixed-language screen reading on macOS 15.
 - The source repository is public at `https://github.com/ytahml/plainleaf` as of 2026-08-30. This does not authorize a binary release, notarization, App Store submission, or deployment.
 
 ## Verification boundary
@@ -31,8 +31,8 @@
 
 ## Current verification status
 
-- On 2026-08-30, 9 automated tests passed and the final app bundle passed strict deep signature verification.
+- On 2026-08-30, 11 automated tests passed and the final app bundle passed strict deep signature verification.
 - The packaged executable declares macOS 15.0 as its minimum OS; manual acceptance was performed on macOS 15.7.7.
-- Core launch, workspace restoration, source editing/autosave, clean external reload, reading, local/remote image boundaries, relative links, both themes, and printing were exercised manually.
+- Core launch, workspace restoration, source editing/autosave, clean external reload, reading, local/remote image boundaries, relative links, both Flexoki themes, and printing were exercised manually. The refreshed visual pass covered source measure/spacing plus Charter and mixed Chinese/English reading typography.
 - The conflict banner timing race and the full keyboard matrix remain outside manual evidence; conflict refusal is covered by an automated test.
 - The source is published on GitHub; the Apple-silicon app build remains local, ad-hoc signed, and unreleased.

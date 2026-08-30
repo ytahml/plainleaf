@@ -33,7 +33,7 @@ struct SourceEditor: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.allowsUndo = true
         textView.usesFindBar = true
-        textView.textContainerInset = NSSize(width: 50, height: 42)
+        textView.textContainerInset = NSSize(width: 56, height: 48)
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
@@ -93,9 +93,11 @@ struct SourceEditor: NSViewRepresentable {
             let string = storage.string
             let fullRange = NSRange(location: 0, length: (string as NSString).length)
             let selection = textView.selectedRanges
-            let baseFont = NSFont.monospacedSystemFont(ofSize: 14.5, weight: .regular)
+            let baseFont = NSFont.monospacedSystemFont(ofSize: 15.5, weight: .regular)
+            let emphasisFont = NSFont.monospacedSystemFont(ofSize: 15.5, weight: .semibold)
             let paragraph = NSMutableParagraphStyle()
-            paragraph.lineSpacing = 4.5
+            paragraph.lineSpacing = 5.5
+            paragraph.paragraphSpacing = 1
 
             isApplyingAttributes = true
             storage.beginEditing()
@@ -106,12 +108,12 @@ struct SourceEditor: NSViewRepresentable {
                 .paragraphStyle: paragraph
             ], range: fullRange)
 
-            apply(pattern: #"(?m)^(#{1,6})(\s+.*)$"#, color: theme.accent, font: .boldSystemFont(ofSize: 14.5), to: storage)
+            apply(pattern: #"(?m)^(#{1,6})(\s+.*)$"#, color: theme.accent, font: emphasisFont, to: storage)
             apply(pattern: #"(?m)^\s*>.*$"#, color: theme.warmAccent, font: nil, to: storage)
             apply(pattern: #"(?m)^\s*(?:[-+*]|\d+\.)\s+"#, color: theme.accent, font: nil, to: storage)
             apply(pattern: #"(?s)```.*?```"#, color: theme.text, font: baseFont, background: theme.codeBackground, to: storage)
             apply(pattern: #"`[^`\n]+`"#, color: theme.accent, font: baseFont, background: theme.codeBackground, to: storage)
-            apply(pattern: #"\*\*[^\n]+?\*\*|__[^\n]+?__"#, color: theme.text, font: .boldSystemFont(ofSize: 14.5), to: storage)
+            apply(pattern: #"\*\*[^\n]+?\*\*|__[^\n]+?__"#, color: theme.text, font: emphasisFont, to: storage)
             apply(pattern: #"\[[^\]]+\]\([^\)]+\)"#, color: theme.accent, font: nil, to: storage)
             apply(pattern: #"(?m)^\s*[-*]\s+\[[ xX]\]\s+"#, color: theme.accent, font: nil, to: storage)
 

@@ -62,7 +62,7 @@ struct DocumentContainerView: View {
         ZStack {
             theme.canvasColor
             SourceEditor(text: $session.text, theme: theme)
-                .frame(maxWidth: 940)
+                .frame(maxWidth: 860)
                 .background(theme.surfaceColor)
                 .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
                 .overlay {

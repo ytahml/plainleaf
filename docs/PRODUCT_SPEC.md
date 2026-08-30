@@ -36,12 +36,12 @@ Plainleaf lists directories and files ending in `.md`, `.markdown`, or `.mdown`.
 
 ## Visual language
 
-- Paper: pressed-fiber desk, pale rice-paper surfaces, graphite text, fern accent, and a restrained copper warning color
-- Ink: deep green-charcoal desk and surfaces, soft ivory text, adjusted fern, and warm copper
-- UI: SF Pro; source and utility labels: SF Mono; reading: New York; code: SF Mono
+- Flexoki Light: neutral paper and soft-gray canvas, near-black text, blue emphasis, and restrained orange warnings
+- Flexoki Dark: inky black canvas and charcoal surfaces, softened light text, blue emphasis, and adjusted orange warnings
+- UI: SF Pro; source and utility labels: SF Mono; reading: Charter with PingFang SC and system fallbacks; code: SF Mono
 - One collapsible library sidebar, one centered paper surface, a document header, and a quiet toolbar
 - The selected-file bookmark and the reading-mode heading rule share a leaf-vein motif
-- Theme follows the system by default and can be fixed to Paper or Ink
+- Theme follows the system by default and can be fixed to Flexoki Light or Flexoki Dark
 
 ## Data and privacy
 

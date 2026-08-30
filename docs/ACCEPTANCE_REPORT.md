@@ -8,7 +8,8 @@ Toolchain: Xcode 26.1.1, Swift 6.2.1, macOS SDK 26.1
 
 ## Verified automatically
 
-- `swift test`: 9 tests passed with no failures.
+- `swift test`: 11 tests passed with no failures.
+- Flexoki Light and Dark text, secondary text, blue emphasis, and orange warning colors meet the 4.5:1 contrast floor against their document surfaces; primary text exceeds 7:1.
 - Workspace enumeration excludes hidden, unsupported, and symlink entries.
 - UTF-8 atomic writes, explicit saves, clean external reloads, and conflict refusal are covered by tests.
 - GFM tables, tasks, strikethrough, inert raw HTML, and image-source parsing are covered by tests.
@@ -27,7 +28,8 @@ Toolchain: Xcode 26.1.1, Swift 6.2.1, macOS SDK 26.1
 - Reading mode rendered headings, mixed Chinese and English text, lists, tasks, tables, highlighted Swift code, and a local image.
 - A remote image remained a blocked placeholder and raw HTML remained visible source.
 - A relative Markdown link opened the destination inside Plainleaf and exposed an accessible button role.
-- Paper and Ink themes both rendered correctly.
+- Flexoki Light and Dark both rendered correctly in the packaged app.
+- Source mode was checked at the narrower writing measure and increased SF Mono spacing; reading mode was checked with Charter, mixed Chinese/English fallback, tables, quotes, inline code, and fenced code.
 - The system print panel opened with a page preview and PDF control.
 - The final locally packaged app launched successfully.
 

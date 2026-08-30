@@ -1,0 +1,21 @@
+/*
+Theme: Flexoki Light
+Source: https://github.com/kepano/flexoki
+License: MIT
+*/
+.hljs{display:block;overflow-x:auto;padding:.5em;color:#100f0f;background:#f2f0e5}
+.hljs-doctag,.hljs-keyword,.hljs-meta.hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_{color:#af3029}
+.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_{color:#5e409d}
+.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-variable,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id{color:#205ea6}
+.hljs-regexp,.hljs-string,.hljs-meta.hljs-string{color:#66800b}
+.hljs-built_in,.hljs-symbol{color:#bc5215}
+.hljs-comment,.hljs-code,.hljs-formula{color:#6f6e69}
+.hljs-name,.hljs-quote,.hljs-selector-tag,.hljs-selector-pseudo{color:#24837b}
+.hljs-subst{color:#100f0f}
+.hljs-section{color:#205ea6;font-weight:bold}
+.hljs-bullet{color:#ad8301}
+.hljs-emphasis{color:#100f0f;font-style:italic}
+.hljs-strong{color:#100f0f;font-weight:bold}
+.hljs-addition{color:#66800b;background-color:#e6e4d9}
+.hljs-deletion{color:#af3029;background-color:#e6e4d9}
+.hljs-char.escape_,.hljs-link,.hljs-params,.hljs-property,.hljs-punctuation,.hljs-tag{}

@@ -27,10 +27,10 @@ struct MarkdownReaderView: View {
                 workspaceURL: workspaceURL,
                 theme: theme
             )
-            .frame(maxWidth: 720, alignment: .leading)
-            .padding(.horizontal, 66)
-            .padding(.vertical, 62)
-            .frame(maxWidth: 852, minHeight: 620, alignment: .topLeading)
+            .frame(maxWidth: 680, alignment: .leading)
+            .padding(.horizontal, 70)
+            .padding(.vertical, 66)
+            .frame(maxWidth: 820, minHeight: 620, alignment: .topLeading)
             .background(theme.surfaceColor)
             .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
             .overlay {
@@ -98,7 +98,7 @@ private struct RenderedBlocksView: View {
     let theme: PlainleafTheme
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 18) {
+        LazyVStack(alignment: .leading, spacing: 20) {
             ForEach(blocks) { block in
                 RenderedBlockView(
                     block: block,
@@ -412,7 +412,7 @@ private struct HighlightedCodeBlock: View {
             highlighted = nil
             return
         }
-        _ = highlighter.setTheme(theme.isDark ? "github-dark" : "github", withFont: "SFMono-Regular", ofSize: 13)
+        _ = highlighter.setTheme(theme.isDark ? "flexoki-dark" : "flexoki-light", withFont: "SFMono-Regular", ofSize: 13)
         let normalized = normalize(language)
         if let value = highlighter.highlight(source, as: normalized) ?? highlighter.highlight(source) {
             highlighted = AttributedString(value)
@@ -505,8 +505,8 @@ private struct InlineTextView: View {
 
     private var baseSize: CGFloat {
         switch role {
-        case .body: 17.5
-        case let .heading(level): [0, 38, 28, 23, 20, 18, 17][min(max(level, 1), 6)]
+        case .body: 18
+        case let .heading(level): [0, 36, 27, 22, 19.5, 18, 17][min(max(level, 1), 6)]
         case .tableHeader, .tableCell: 14.5
         }
     }
@@ -539,15 +539,22 @@ private struct InlineTextView: View {
 
     private var roleLineSpacing: CGFloat {
         switch role {
-        case .body: 6
+        case .body: 7
         case .heading: 3
         case .tableHeader, .tableCell: 3
         }
     }
 
     private func readerFont(size: CGFloat, weight: NSFont.Weight) -> NSFont {
-        let base = NSFont(name: "NewYork-Regular", size: size) ?? NSFont.systemFont(ofSize: size)
-        return weight == .regular ? base : NSFontManager.shared.convert(base, toHaveTrait: .boldFontMask)
+        let postScriptName = weight == .regular ? "Charter-Roman" : "Charter-Bold"
+        let base = NSFont(name: postScriptName, size: size)
+            ?? NSFont.systemFont(ofSize: size, weight: weight)
+        let cjkName = weight == .regular ? "PingFangSC-Regular" : "PingFangSC-Semibold"
+        guard let cjk = NSFont(name: cjkName, size: size) else { return base }
+        let descriptor = base.fontDescriptor.addingAttributes([
+            .cascadeList: [cjk.fontDescriptor]
+        ])
+        return NSFont(descriptor: descriptor, size: size) ?? base
     }
 
     private func encodedLink(_ destination: String) -> URL? {

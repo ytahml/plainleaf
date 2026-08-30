@@ -11,8 +11,8 @@ enum ThemePreference: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .system: "System"
-        case .paper: "Paper"
-        case .ink: "Ink"
+        case .paper: "Flexoki Light"
+        case .ink: "Flexoki Dark"
         }
     }
 }
@@ -36,28 +36,28 @@ struct PlainleafTheme: Equatable {
 
     static let paper = PlainleafTheme(
         isDark: false,
-        canvas: NSColor(calibratedRed: 0.910, green: 0.894, blue: 0.855, alpha: 1),
-        surface: NSColor(calibratedRed: 0.973, green: 0.961, blue: 0.925, alpha: 1),
-        text: NSColor(calibratedRed: 0.145, green: 0.157, blue: 0.137, alpha: 1),
-        secondaryText: NSColor(calibratedRed: 0.390, green: 0.404, blue: 0.363, alpha: 1),
-        accent: NSColor(calibratedRed: 0.243, green: 0.420, blue: 0.302, alpha: 1),
-        warmAccent: NSColor(calibratedRed: 0.659, green: 0.365, blue: 0.224, alpha: 1),
-        border: NSColor(calibratedRed: 0.782, green: 0.757, blue: 0.698, alpha: 1),
-        codeBackground: NSColor(calibratedRed: 0.910, green: 0.894, blue: 0.855, alpha: 1),
-        selection: NSColor(calibratedRed: 0.824, green: 0.855, blue: 0.792, alpha: 1)
+        canvas: .flexoki(0xF2F0E5),
+        surface: .flexoki(0xFFFCF0),
+        text: .flexoki(0x100F0F),
+        secondaryText: .flexoki(0x6F6E69),
+        accent: .flexoki(0x205EA6),
+        warmAccent: .flexoki(0xBC5215),
+        border: .flexoki(0xDAD8CE),
+        codeBackground: .flexoki(0xF2F0E5),
+        selection: .flexoki(0xE6E4D9)
     )
 
     static let ink = PlainleafTheme(
         isDark: true,
-        canvas: NSColor(calibratedRed: 0.098, green: 0.110, blue: 0.098, alpha: 1),
-        surface: NSColor(calibratedRed: 0.137, green: 0.149, blue: 0.129, alpha: 1),
-        text: NSColor(calibratedRed: 0.906, green: 0.898, blue: 0.859, alpha: 1),
-        secondaryText: NSColor(calibratedRed: 0.604, green: 0.620, blue: 0.565, alpha: 1),
-        accent: NSColor(calibratedRed: 0.471, green: 0.627, blue: 0.506, alpha: 1),
-        warmAccent: NSColor(calibratedRed: 0.816, green: 0.506, blue: 0.349, alpha: 1),
-        border: NSColor(calibratedRed: 0.235, green: 0.251, blue: 0.220, alpha: 1),
-        codeBackground: NSColor(calibratedRed: 0.086, green: 0.098, blue: 0.082, alpha: 1),
-        selection: NSColor(calibratedRed: 0.196, green: 0.267, blue: 0.208, alpha: 1)
+        canvas: .flexoki(0x100F0F),
+        surface: .flexoki(0x1C1B1A),
+        text: .flexoki(0xCECDC3),
+        secondaryText: .flexoki(0x878580),
+        accent: .flexoki(0x66A0C8),
+        warmAccent: .flexoki(0xDA702C),
+        border: .flexoki(0x343331),
+        codeBackground: .flexoki(0x282726),
+        selection: .flexoki(0x343331)
     )
 
     static func resolve(_ preference: ThemePreference, systemAppearance: NSAppearance?) -> PlainleafTheme {
@@ -81,4 +81,15 @@ struct PlainleafTheme: Equatable {
     var borderColor: Color { Color(nsColor: border) }
     var codeBackgroundColor: Color { Color(nsColor: codeBackground) }
     var selectionColor: Color { Color(nsColor: selection) }
+}
+
+private extension NSColor {
+    static func flexoki(_ hex: UInt32) -> NSColor {
+        NSColor(
+            srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: 1
+        )
+    }
 }

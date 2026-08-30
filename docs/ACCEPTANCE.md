@@ -19,7 +19,7 @@
 - Concurrent local and external edits produce a visible conflict and do not overwrite either version.
 - Reading mode renders headings, mixed Chinese/English text, lists, tasks, tables, quotes, local images, and fenced code.
 - Remote images do not cause network loading and raw HTML does not execute.
-- Paper and Ink themes remain readable and keyboard navigation has visible focus.
+- Flexoki Light and Dark remain readable, mixed Chinese/English text falls back cleanly, and keyboard navigation has visible focus.
 - The system print panel opens from reading mode and can save a PDF.
 - The locally packaged `Plainleaf.app` launches on macOS 15.7.
 

@@ -125,6 +125,8 @@ let package = Package(
                 .copy("Assets/styles/felipec.css"),
                 .copy("Assets/styles/flat.css"),
                 .copy("Assets/styles/foundation.css"),
+                .copy("Assets/styles/flexoki-dark.css"),
+                .copy("Assets/styles/flexoki-light.css"),
                 .copy("Assets/styles/framer.css"),
                 .copy("Assets/styles/fruit-soda.css"),
                 .copy("Assets/styles/gigavolt.css"),
