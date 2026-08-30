@@ -1,7 +1,9 @@
 # MVP acceptance report
 
-Date: 2026-08-30  
-Host: macOS 15.7.7, Apple silicon  
+Date: 2026-08-30
+
+Host: macOS 15.7.7, Apple silicon
+
 Toolchain: Xcode 26.1.1, Swift 6.2.1, macOS SDK 26.1
 
 ## Verified automatically
