@@ -25,6 +25,7 @@ enum ReadingMode: String {
 struct PlainleafTheme: Equatable {
     let isDark: Bool
     let canvas: NSColor
+    let chrome: NSColor
     let surface: NSColor
     let text: NSColor
     let secondaryText: NSColor
@@ -36,27 +37,29 @@ struct PlainleafTheme: Equatable {
 
     static let paper = PlainleafTheme(
         isDark: false,
-        canvas: .flexoki(0xF2F0E5),
-        surface: .flexoki(0xFFFCF0),
-        text: .flexoki(0x100F0F),
+        canvas: .flexoki(0xECEAE3),
+        chrome: .flexoki(0xF7F5EE),
+        surface: .flexoki(0xFFFEFA),
+        text: .flexoki(0x1C1B1A),
         secondaryText: .flexoki(0x6F6E69),
         accent: .flexoki(0x205EA6),
-        warmAccent: .flexoki(0xBC5215),
+        warmAccent: .flexoki(0xAF3A03),
         border: .flexoki(0xDAD8CE),
-        codeBackground: .flexoki(0xF2F0E5),
+        codeBackground: .flexoki(0xF3F4F6),
         selection: .flexoki(0xE6E4D9)
     )
 
     static let ink = PlainleafTheme(
         isDark: true,
         canvas: .flexoki(0x100F0F),
-        surface: .flexoki(0x1C1B1A),
+        chrome: .flexoki(0x1C1B1A),
+        surface: .flexoki(0x171614),
         text: .flexoki(0xCECDC3),
         secondaryText: .flexoki(0x878580),
         accent: .flexoki(0x66A0C8),
         warmAccent: .flexoki(0xDA702C),
         border: .flexoki(0x343331),
-        codeBackground: .flexoki(0x282726),
+        codeBackground: .flexoki(0x202226),
         selection: .flexoki(0x343331)
     )
 
@@ -73,6 +76,7 @@ struct PlainleafTheme: Equatable {
     }
 
     var canvasColor: Color { Color(nsColor: canvas) }
+    var chromeColor: Color { Color(nsColor: chrome) }
     var surfaceColor: Color { Color(nsColor: surface) }
     var textColor: Color { Color(nsColor: text) }
     var secondaryTextColor: Color { Color(nsColor: secondaryText) }

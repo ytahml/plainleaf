@@ -52,7 +52,7 @@ struct DocumentContainerView: View {
         }
         .padding(.horizontal, 22)
         .frame(height: 66)
-        .background(theme.surfaceColor)
+        .background(theme.chromeColor)
         .overlay(alignment: .bottom) {
             Rectangle().fill(theme.borderColor.opacity(0.8)).frame(height: 1)
         }
@@ -64,12 +64,12 @@ struct DocumentContainerView: View {
             SourceEditor(text: $session.text, theme: theme)
                 .frame(maxWidth: 860)
                 .background(theme.surfaceColor)
-                .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .stroke(theme.borderColor.opacity(0.7), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(theme.borderColor.opacity(theme.isDark ? 0.58 : 0.72), lineWidth: 1)
                 }
-                .shadow(color: .black.opacity(theme.isDark ? 0.20 : 0.08), radius: 14, y: 6)
+                .shadow(color: .black.opacity(theme.isDark ? 0.16 : 0.055), radius: 12, y: 5)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
         }
@@ -119,7 +119,7 @@ struct DocumentContainerView: View {
         .foregroundStyle(theme.secondaryTextColor)
         .padding(.horizontal, 14)
         .frame(height: 29)
-        .background(theme.surfaceColor)
+        .background(theme.chromeColor)
         .overlay(alignment: .top) {
             Rectangle().fill(theme.borderColor.opacity(0.7)).frame(height: 1)
         }

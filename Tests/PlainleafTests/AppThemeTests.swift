@@ -9,6 +9,13 @@ final class AppThemeTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(contrast(theme.secondaryText, theme.surface), 4.5)
             XCTAssertGreaterThanOrEqual(contrast(theme.accent, theme.surface), 4.5)
             XCTAssertGreaterThanOrEqual(contrast(theme.warmAccent, theme.surface), 4.5)
+            XCTAssertGreaterThanOrEqual(contrast(theme.text, theme.chrome), 7)
+            XCTAssertGreaterThanOrEqual(contrast(theme.secondaryText, theme.chrome), 4.5)
+            XCTAssertGreaterThanOrEqual(contrast(theme.accent, theme.chrome), 4.5)
+            XCTAssertGreaterThanOrEqual(contrast(theme.text, theme.codeBackground), 7)
+            XCTAssertNotEqual(theme.canvas, theme.chrome)
+            XCTAssertNotEqual(theme.chrome, theme.surface)
+            XCTAssertNotEqual(theme.codeBackground, theme.surface)
         }
     }
 

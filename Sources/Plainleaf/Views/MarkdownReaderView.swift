@@ -27,17 +27,18 @@ struct MarkdownReaderView: View {
                 workspaceURL: workspaceURL,
                 theme: theme
             )
-            .frame(maxWidth: 680, alignment: .leading)
-            .padding(.horizontal, 70)
-            .padding(.vertical, 66)
-            .frame(maxWidth: 820, minHeight: 620, alignment: .topLeading)
+            .frame(maxWidth: 660, alignment: .leading)
+            .padding(.horizontal, 68)
+            .padding(.top, 62)
+            .padding(.bottom, 76)
+            .frame(maxWidth: 796, minHeight: 620, alignment: .topLeading)
             .background(theme.surfaceColor)
-            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .stroke(theme.borderColor.opacity(0.65), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(theme.borderColor.opacity(theme.isDark ? 0.52 : 0.66), lineWidth: 1)
             }
-            .shadow(color: .black.opacity(theme.isDark ? 0.20 : 0.08), radius: 14, y: 6)
+            .shadow(color: .black.opacity(theme.isDark ? 0.16 : 0.055), radius: 12, y: 5)
             .padding(.horizontal, 28)
             .padding(.vertical, 22)
             .frame(maxWidth: .infinity, alignment: .top)
@@ -98,7 +99,7 @@ private struct RenderedBlocksView: View {
     let theme: PlainleafTheme
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 20) {
+        LazyVStack(alignment: .leading, spacing: 19) {
             ForEach(blocks) { block in
                 RenderedBlockView(
                     block: block,
@@ -125,17 +126,18 @@ private struct RenderedBlockView: View {
                 HStack(alignment: .top, spacing: 17) {
                     RoundedRectangle(cornerRadius: 2)
                         .fill(theme.accentColor)
-                        .frame(width: 4, height: 38)
-                        .padding(.top, 4)
+                        .frame(width: 3, height: 34)
+                        .padding(.top, 3)
                         .accessibilityHidden(true)
                     InlineTextView(runs: runs, theme: theme, role: .heading(level))
                 }
-                .padding(.top, 8)
-                .padding(.bottom, 5)
+                .padding(.top, 7)
+                .padding(.bottom, 7)
                 .accessibilityAddTraits(.isHeader)
             } else {
                 InlineTextView(runs: runs, theme: theme, role: .heading(level))
-                    .padding(.top, 7)
+                    .padding(.top, level == 2 ? 13 : 7)
+                    .padding(.bottom, level == 2 ? 2 : 0)
                     .accessibilityAddTraits(.isHeader)
             }
         case let .paragraph(runs):
@@ -367,21 +369,16 @@ private struct HighlightedCodeBlock: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 7) {
-                Circle()
-                    .fill(theme.warmAccentColor)
-                    .frame(width: 6, height: 6)
+            HStack(spacing: 0) {
                 Text(language?.isEmpty == false ? language!.uppercased() : "CODE")
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(1)
+                    .tracking(1.1)
                 Spacer()
             }
             .foregroundStyle(theme.secondaryTextColor)
-            .padding(.horizontal, 14)
-            .frame(height: 33)
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(theme.borderColor.opacity(0.65)).frame(height: 1)
-            }
+            .padding(.horizontal, 16)
+            .padding(.top, 13)
+            .padding(.bottom, 5)
             ScrollView(.horizontal) {
                 Group {
                     if let highlighted {
@@ -390,18 +387,20 @@ private struct HighlightedCodeBlock: View {
                         Text(source)
                     }
                 }
-                .font(.system(size: 13, design: .monospaced))
+                .font(.system(size: 13.5, design: .monospaced))
                 .textSelection(.enabled)
                 .fixedSize(horizontal: true, vertical: false)
             }
-            .padding(14)
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(theme.codeBackgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(theme.borderColor.opacity(0.7), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(theme.borderColor.opacity(theme.isDark ? 0.48 : 0.58), lineWidth: 1)
         }
         .onAppear(perform: renderHighlight)
         .onChange(of: theme, initial: false) { _, _ in renderHighlight() }
@@ -412,7 +411,7 @@ private struct HighlightedCodeBlock: View {
             highlighted = nil
             return
         }
-        _ = highlighter.setTheme(theme.isDark ? "flexoki-dark" : "flexoki-light", withFont: "SFMono-Regular", ofSize: 13)
+        _ = highlighter.setTheme(theme.isDark ? "flexoki-dark" : "flexoki-light", withFont: "SFMono-Regular", ofSize: 13.5)
         let normalized = normalize(language)
         if let value = highlighter.highlight(source, as: normalized) ?? highlighter.highlight(source) {
             highlighted = AttributedString(value)
@@ -505,8 +504,8 @@ private struct InlineTextView: View {
 
     private var baseSize: CGFloat {
         switch role {
-        case .body: 18
-        case let .heading(level): [0, 36, 27, 22, 19.5, 18, 17][min(max(level, 1), 6)]
+        case .body: 17.5
+        case let .heading(level): [0, 34, 26, 21.5, 19, 17.5, 16.5][min(max(level, 1), 6)]
         case .tableHeader, .tableCell: 14.5
         }
     }
@@ -539,8 +538,8 @@ private struct InlineTextView: View {
 
     private var roleLineSpacing: CGFloat {
         switch role {
-        case .body: 7
-        case .heading: 3
+        case .body: 7.5
+        case .heading: 3.5
         case .tableHeader, .tableCell: 3
         }
     }

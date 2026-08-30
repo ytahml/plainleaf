@@ -81,7 +81,7 @@ struct PlainleafRootView: View {
                 .padding(18)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(theme.surfaceColor)
+            .background(theme.chromeColor)
         }
     }
 
@@ -171,7 +171,7 @@ private struct WorkspaceSidebar: View {
             .padding(.horizontal, 16)
             .frame(height: 42)
         }
-        .background(theme.surfaceColor)
+        .background(theme.chromeColor)
     }
 }
 
