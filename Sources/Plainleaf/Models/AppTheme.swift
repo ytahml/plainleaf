@@ -17,8 +17,9 @@ enum ThemePreference: String, CaseIterable, Identifiable {
     }
 }
 
-enum ReadingMode: String {
+enum ReadingMode: String, CaseIterable {
     case source
+    case split
     case reading
 }
 
@@ -85,6 +86,26 @@ struct PlainleafTheme: Equatable {
     var borderColor: Color { Color(nsColor: border) }
     var codeBackgroundColor: Color { Color(nsColor: codeBackground) }
     var selectionColor: Color { Color(nsColor: selection) }
+}
+
+enum PlainleafTypography {
+    static func readingFont(size: CGFloat, weight: NSFont.Weight = .regular) -> NSFont {
+        let system = NSFont.systemFont(ofSize: size, weight: weight)
+        let latinDescriptor = system.fontDescriptor.withDesign(.serif) ?? system.fontDescriptor
+        let latin = NSFont(descriptor: latinDescriptor, size: size) ?? system
+
+        let cjkNames = weight.rawValue >= NSFont.Weight.semibold.rawValue
+            ? ["STSongti-SC-Bold", "PingFangSC-Semibold"]
+            : ["STSongti-SC-Regular", "PingFangSC-Regular"]
+        guard let cjk = cjkNames.lazy.compactMap({ NSFont(name: $0, size: size) }).first else {
+            return latin
+        }
+
+        let descriptor = latin.fontDescriptor.addingAttributes([
+            .cascadeList: [cjk.fontDescriptor]
+        ])
+        return NSFont(descriptor: descriptor, size: size) ?? latin
+    }
 }
 
 private extension NSColor {

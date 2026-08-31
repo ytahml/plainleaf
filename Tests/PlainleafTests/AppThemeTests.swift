@@ -3,6 +3,48 @@ import XCTest
 @testable import Plainleaf
 
 final class AppThemeTests: XCTestCase {
+    func testReadingModePersistsSplitValue() {
+        XCTAssertEqual(ReadingMode(rawValue: "split"), .split)
+        XCTAssertEqual(ReadingMode.allCases, [.source, .split, .reading])
+    }
+
+    func testReadingAppearanceUsesBoundedHalfPointTextSizesAndNamedPresets() {
+        XCTAssertEqual(ReadingAppearance(textSize: 12).textSize, 15.5)
+        XCTAssertEqual(ReadingAppearance(textSize: 18.24).textSize, 18)
+        XCTAssertEqual(ReadingAppearance(textSize: 18.26).textSize, 18.5)
+        XCTAssertEqual(ReadingAppearance(textSize: 90).textSize, 22.5)
+        XCTAssertEqual(ReadingAppearance(textSize: .infinity).textSize, 17.5)
+
+        let adjusted = ReadingAppearance.standard
+            .adjustingTextSize(by: ReadingAppearance.textSizeStep)
+        XCTAssertEqual(adjusted.textSize, 18.5)
+        XCTAssertEqual(adjusted.leading, .book)
+        XCTAssertEqual(adjusted.measure, .balanced)
+        XCTAssertEqual(ReadingLeading.compact.lineHeight, 1.58)
+        XCTAssertEqual(ReadingLeading.book.lineHeight, 1.78)
+        XCTAssertEqual(ReadingLeading.open.lineHeight, 1.94)
+        XCTAssertEqual(ReadingMeasure.narrow.maximumWidth, 680)
+        XCTAssertEqual(ReadingMeasure.balanced.maximumWidth, 796)
+        XCTAssertEqual(ReadingMeasure.wide.maximumWidth, 940)
+    }
+
+    func testReadingAppearanceRoundTripsThroughIsolatedApplicationDefaults() throws {
+        let suiteName = "PlainleafTests.ReadingAppearance.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertEqual(ReadingAppearance.restore(from: defaults), .standard)
+
+        let expected = ReadingAppearance(
+            textSize: 21.5,
+            leading: .compact,
+            measure: .wide
+        )
+        expected.persist(to: defaults)
+
+        XCTAssertEqual(ReadingAppearance.restore(from: defaults), expected)
+    }
+
     func testFlexokiThemesKeepInterfaceColorsReadable() {
         for theme in [PlainleafTheme.paper, .ink] {
             XCTAssertGreaterThanOrEqual(contrast(theme.text, theme.surface), 7)
@@ -28,6 +70,24 @@ final class AppThemeTests: XCTestCase {
             PlainleafTheme.resolve(.system, systemAppearance: NSAppearance(named: .darkAqua)),
             .ink
         )
+    }
+
+    func testReadingTypographyUsesSystemSerifWithSongtiCascade() throws {
+        let regular = PlainleafTypography.readingFont(size: 17.5)
+        XCTAssertEqual(regular.familyName, ".AppleSystemUIFontSerif")
+        XCTAssertEqual(try cascadeFontName(in: regular), "STSongti-SC-Regular")
+
+        let semibold = PlainleafTypography.readingFont(size: 21.5, weight: .semibold)
+        XCTAssertEqual(semibold.familyName, ".AppleSystemUIFontSerif")
+        XCTAssertEqual(try cascadeFontName(in: semibold), "STSongti-SC-Bold")
+    }
+
+    private func cascadeFontName(in font: NSFont) throws -> String {
+        let descriptors = try XCTUnwrap(
+            font.fontDescriptor.object(forKey: .cascadeList) as? [NSFontDescriptor]
+        )
+        let descriptor = try XCTUnwrap(descriptors.first)
+        return try XCTUnwrap(descriptor.object(forKey: .name) as? String)
     }
 
     private func contrast(_ foreground: NSColor, _ background: NSColor) -> CGFloat {

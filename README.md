@@ -11,10 +11,15 @@ Plainleaf is a local-first Markdown editor and reader for macOS. It opens a fold
 - Markdown-only workspace tree
 - Source editing with syntax highlighting, undo, find, and formatting shortcuts
 - Debounced atomic autosave with external-change conflict protection
-- GFM reading mode with tables, task lists, fenced code, and local images
-- Flexoki Light and Dark themes with Charter reading typography and macOS system-font fallbacks
+- HTML/CSS reading mode with GFM tables, task lists, fenced code, footnotes, and local images
+- Local reading controls for text size, line spacing, and page width
+- Single-file HTML export with embedded local images and no runtime network dependency
+- Draggable split view with synchronized Markdown source and HTML preview scrolling
+- Collapsible document outline with heading hierarchy, in-page navigation, and active-section tracking
+- In-memory workspace search across Markdown paths and content, with line-level source navigation
+- Flexoki Light and Dark themes with New York and Songti SC reading typography
 - System printing and PDF through the macOS print panel
-- No telemetry, accounts, remote image loading, or hidden workspace metadata
+- JavaScript-disabled preview with no telemetry, accounts, remote image loading, or hidden workspace metadata
 
 ## Requirements
 

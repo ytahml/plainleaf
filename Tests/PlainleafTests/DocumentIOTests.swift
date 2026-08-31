@@ -98,6 +98,9 @@ final class WorkspaceStoreTests: XCTestCase {
 
             XCTAssertEqual(nodes.map(\.name), ["Docs"])
             XCTAssertEqual(nodes.first?.children?.map(\.name), ["Visible.md"])
+
+            let store = WorkspaceStore(rootURL: directory)
+            XCTAssertEqual(store.markdownFiles.map(\.relativePath), ["Docs/Visible.md"])
         }
     }
 }

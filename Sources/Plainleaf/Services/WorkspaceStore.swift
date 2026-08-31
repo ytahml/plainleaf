@@ -25,6 +25,10 @@ final class WorkspaceStore: ObservableObject {
 
     var displayName: String { rootURL.lastPathComponent }
 
+    var markdownFiles: [WorkspaceSearchFile] {
+        nodes.flatMap(markdownFiles(in:))
+    }
+
     func reload() {
         do {
             nodes = try Self.enumerate(rootURL)
@@ -110,5 +114,13 @@ final class WorkspaceStore: ObservableObject {
             if lhs.isDirectory != rhs.isDirectory { return lhs.isDirectory }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    private func markdownFiles(in node: WorkspaceNode) -> [WorkspaceSearchFile] {
+        if node.isDirectory {
+            return (node.children ?? []).flatMap(markdownFiles(in:))
+        }
+        guard let relativePath = relativePath(for: node.url) else { return [] }
+        return [WorkspaceSearchFile(url: node.url, relativePath: relativePath)]
     }
 }

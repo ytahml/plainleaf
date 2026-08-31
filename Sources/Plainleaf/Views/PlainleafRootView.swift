@@ -115,7 +115,10 @@ private struct WorkspaceSidebar: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                Button { workspace.reload() } label: {
+                Button {
+                    workspace.reload()
+                    model.refreshWorkspaceSearch()
+                } label: {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.plain)
@@ -138,14 +141,34 @@ private struct WorkspaceSidebar: View {
             .padding(.top, 9)
             .padding(.bottom, 7)
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(workspace.nodes) { node in
-                        WorkspaceNodeView(node: node, model: model, level: 0, theme: theme)
+            WorkspaceSearchField(model: model, theme: theme)
+
+            if model.isWorkspaceSearchActive {
+                WorkspaceSearchResultsView(model: model, theme: theme)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 2) {
+                        ForEach(workspace.nodes) { node in
+                            WorkspaceNodeView(node: node, model: model, level: 0, theme: theme)
+                        }
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 8)
                 }
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
+            }
+
+            if !model.isWorkspaceSearchActive,
+               model.mode != .source,
+               let document = model.document {
+                Rectangle()
+                    .fill(theme.borderColor.opacity(0.75))
+                    .frame(height: 1)
+
+                DocumentOutlineSection(
+                    model: model,
+                    session: document,
+                    theme: theme
+                )
             }
 
             Rectangle()
@@ -241,7 +264,7 @@ private struct WelcomeView: View {
                         .tracking(1.6)
                         .foregroundStyle(theme.accentColor)
                     Text("Plain files,\nset in type.")
-                        .font(.system(size: 42, weight: .medium, design: .serif))
+                        .font(Font(PlainleafTypography.readingFont(size: 42, weight: .medium)))
                         .tracking(-1.1)
                         .padding(.top, 17)
                     Text(model.workspace == nil

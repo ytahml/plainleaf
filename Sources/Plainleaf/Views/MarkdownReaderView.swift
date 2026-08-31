@@ -1,9 +1,92 @@
 import AppKit
-import Highlighter
 import SwiftUI
+import WebKit
 
 extension Notification.Name {
     static let plainleafPrint = Notification.Name("Plainleaf.Reader.Print")
+    static let plainleafRevealHeading = Notification.Name("Plainleaf.Reader.RevealHeading")
+}
+
+enum HTMLPreviewNavigation {
+    static func revealHeadingScript(anchor: String) -> String? {
+        guard !anchor.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: anchor, options: .fragmentsAllowed),
+              let encodedAnchor = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return "document.getElementById(\(encodedAnchor))?.scrollIntoView({block: 'start'});"
+    }
+
+    static func localFragmentAnchor(from url: URL) -> String? {
+        guard url.scheme?.lowercased() == "about" else { return nil }
+        if let fragment = url.fragment, !fragment.isEmpty {
+            return fragment.removingPercentEncoding ?? fragment
+        }
+        let decoded = url.absoluteString.removingPercentEncoding ?? url.absoluteString
+        let prefix = "about:blank#"
+        guard decoded.hasPrefix(prefix) else { return nil }
+        let anchor = String(decoded.dropFirst(prefix.count))
+        return anchor.isEmpty ? nil : anchor
+    }
+
+    static func revealLocalFragmentScript(anchor: String) -> String? {
+        guard !anchor.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: anchor, options: .fragmentsAllowed),
+              let encodedAnchor = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        return """
+        (() => {
+          const anchor = \(encodedAnchor);
+          const target = document.getElementById(anchor);
+          if (!target) return false;
+          history.replaceState(null, '', '#' + encodeURIComponent(anchor));
+          target.setAttribute('tabindex', '-1');
+          target.scrollIntoView({block: 'center'});
+          target.focus({preventScroll: true});
+          return true;
+        })()
+        """
+    }
+
+    static let scrollSnapshotScript = """
+    (() => {
+      const maximum = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      const progress = Math.max(0, Math.min(1, window.scrollY / maximum));
+      const headings = Array.from(
+        document.querySelectorAll('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]')
+      ).filter(heading => !heading.closest('.footnotes'));
+      if (headings.length === 0) return { progress, anchor: null };
+      const threshold = Math.min(160, Math.max(64, window.innerHeight * 0.22));
+      let active = headings[0];
+      for (const heading of headings) {
+        if (heading.getBoundingClientRect().top <= threshold) active = heading;
+        else break;
+      }
+      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+        active = headings[headings.length - 1];
+      }
+      return { progress, anchor: active.id };
+    })()
+    """
+}
+
+struct HTMLPreviewScrollSnapshot: Equatable {
+    let progress: Double
+    let activeHeadingAnchor: String?
+
+    init?(javascriptValue: Any?) {
+        guard let values = javascriptValue as? [String: Any],
+              let progress = (values["progress"] as? NSNumber)?.doubleValue else {
+            return nil
+        }
+        self.progress = progress.isFinite ? min(max(progress, 0), 1) : 0
+        if let anchor = values["anchor"] as? String, !anchor.isEmpty {
+            self.activeHeadingAnchor = anchor
+        } else {
+            self.activeHeadingAnchor = nil
+        }
+    }
 }
 
 struct MarkdownReaderView: View {
@@ -11,556 +94,347 @@ struct MarkdownReaderView: View {
     let documentURL: URL
     let workspaceURL: URL
     let theme: PlainleafTheme
+    let appearance: ReadingAppearance
     let onOpenLink: (String) -> Void
-
-    private var rendered: RenderedDocument {
-        var renderer = MarkdownRenderer()
-        return renderer.parse(source)
-    }
+    let onActiveHeadingChange: (String?) -> Void
+    @ObservedObject var scrollSync: PreviewScrollSyncController
+    let syncEnabled: Bool
 
     var body: some View {
-        let document = rendered
-        ScrollView {
-            RenderedBlocksView(
-                blocks: document.blocks,
-                documentURL: documentURL,
-                workspaceURL: workspaceURL,
-                theme: theme
-            )
-            .frame(maxWidth: 660, alignment: .leading)
-            .padding(.horizontal, 68)
-            .padding(.top, 62)
-            .padding(.bottom, 76)
-            .frame(maxWidth: 796, minHeight: 620, alignment: .topLeading)
-            .background(theme.surfaceColor)
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(theme.borderColor.opacity(theme.isDark ? 0.52 : 0.66), lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(theme.isDark ? 0.16 : 0.055), radius: 12, y: 5)
-            .padding(.horizontal, 28)
-            .padding(.vertical, 22)
-            .frame(maxWidth: .infinity, alignment: .top)
-        }
-        .background(theme.canvasColor)
-        .environment(\.openURL, OpenURLAction { url in
-            if url.scheme == "plainleaf", let destination = decodePlainleafLink(url) {
-                onOpenLink(destination)
-            } else {
-                onOpenLink(url.absoluteString)
-            }
-            return .handled
-        })
-        .onReceive(NotificationCenter.default.publisher(for: .plainleafPrint)) { _ in
-            printDocument(document)
-        }
-        .accessibilityLabel("Rendered Markdown document")
-    }
-
-    private func printDocument(_ document: RenderedDocument) {
-        let printable = RenderedBlocksView(
-            blocks: document.blocks,
+        HTMLPreviewWebView(
+            source: source,
             documentURL: documentURL,
             workspaceURL: workspaceURL,
-            theme: .paper
+            theme: theme,
+            appearance: appearance,
+            onOpenLink: onOpenLink,
+            onActiveHeadingChange: onActiveHeadingChange,
+            scrollSync: scrollSync,
+            syncEnabled: syncEnabled
         )
-        .frame(width: 680, alignment: .leading)
-        .padding(50)
-        .background(PlainleafTheme.paper.canvasColor)
-
-        let hostingView = NSHostingView(rootView: printable)
-        hostingView.layoutSubtreeIfNeeded()
-        let fitting = hostingView.fittingSize
-        hostingView.frame = NSRect(
-            origin: .zero,
-            size: NSSize(width: 780, height: max(fitting.height, 900))
-        )
-
-        let info = NSPrintInfo.shared.copy() as! NSPrintInfo
-        info.horizontalPagination = .fit
-        info.verticalPagination = .automatic
-        info.isHorizontallyCentered = true
-        NSPrintOperation(view: hostingView, printInfo: info).run()
-    }
-
-    private func decodePlainleafLink(_ url: URL) -> String? {
-        URLComponents(url: url, resolvingAgainstBaseURL: false)?
-            .queryItems?
-            .first(where: { $0.name == "destination" })?
-            .value
+        .background(theme.canvasColor)
+        .accessibilityLabel("Rendered Markdown document")
     }
 }
 
-private struct RenderedBlocksView: View {
-    let blocks: [RenderedBlock]
-    let documentURL: URL
-    let workspaceURL: URL
-    let theme: PlainleafTheme
-
-    var body: some View {
-        LazyVStack(alignment: .leading, spacing: 19) {
-            ForEach(blocks) { block in
-                RenderedBlockView(
-                    block: block,
-                    documentURL: documentURL,
-                    workspaceURL: workspaceURL,
-                    theme: theme
-                )
-            }
-        }
-    }
-}
-
-private struct RenderedBlockView: View {
-    let block: RenderedBlock
-    let documentURL: URL
-    let workspaceURL: URL
-    let theme: PlainleafTheme
-
-    @ViewBuilder
-    var body: some View {
-        switch block.kind {
-        case let .heading(level, runs):
-            if level == 1 {
-                HStack(alignment: .top, spacing: 17) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(theme.accentColor)
-                        .frame(width: 3, height: 34)
-                        .padding(.top, 3)
-                        .accessibilityHidden(true)
-                    InlineTextView(runs: runs, theme: theme, role: .heading(level))
-                }
-                .padding(.top, 7)
-                .padding(.bottom, 7)
-                .accessibilityAddTraits(.isHeader)
-            } else {
-                InlineTextView(runs: runs, theme: theme, role: .heading(level))
-                    .padding(.top, level == 2 ? 13 : 7)
-                    .padding(.bottom, level == 2 ? 2 : 0)
-                    .accessibilityAddTraits(.isHeader)
-            }
-        case let .paragraph(runs):
-            InlineTextView(runs: runs, theme: theme, role: .body)
-        case let .image(source, alt):
-            SafeLocalImage(
-                source: source,
-                alt: alt,
-                documentURL: documentURL,
-                workspaceURL: workspaceURL,
-                theme: theme
-            )
-        case let .code(language, source):
-            HighlightedCodeBlock(language: language, source: source, theme: theme)
-        case let .blockQuote(children):
-            HStack(alignment: .top, spacing: 14) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(theme.warmAccentColor)
-                    .frame(width: 3)
-                RenderedBlocksView(
-                    blocks: children,
-                    documentURL: documentURL,
-                    workspaceURL: workspaceURL,
-                    theme: theme
-                )
-            }
-            .padding(.vertical, 4)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(theme.warmAccentColor.opacity(theme.isDark ? 0.09 : 0.06))
-        case let .unorderedList(items):
-            MarkdownList(
-                items: items,
-                start: nil,
-                documentURL: documentURL,
-                workspaceURL: workspaceURL,
-                theme: theme
-            )
-        case let .orderedList(start, items):
-            MarkdownList(
-                items: items,
-                start: start,
-                documentURL: documentURL,
-                workspaceURL: workspaceURL,
-                theme: theme
-            )
-        case let .table(alignments, header, rows):
-            MarkdownTable(alignments: alignments, header: header, rows: rows, theme: theme)
-        case .thematicBreak:
-            Divider().overlay(theme.borderColor)
-        case let .rawHTML(html):
-            VStack(alignment: .leading, spacing: 6) {
-                Label("Raw HTML shown as text", systemImage: "chevron.left.forwardslash.chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(theme.secondaryTextColor)
-                Text(html)
-                    .font(.system(size: 13, design: .monospaced))
-                    .textSelection(.enabled)
-            }
-            .padding(13)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(theme.codeBackgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .overlay {
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(theme.borderColor.opacity(0.7), lineWidth: 1)
-            }
-        }
-    }
-}
-
-private struct MarkdownList: View {
-    let items: [RenderedListItem]
-    let start: UInt?
-    let documentURL: URL
-    let workspaceURL: URL
-    let theme: PlainleafTheme
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                HStack(alignment: .top, spacing: 10) {
-                    marker(for: item, index: index)
-                        .frame(width: 22, alignment: .trailing)
-                        .foregroundStyle(item.checkState == .checked ? theme.accentColor : theme.secondaryTextColor)
-                    RenderedBlocksView(
-                        blocks: item.blocks,
-                        documentURL: documentURL,
-                        workspaceURL: workspaceURL,
-                        theme: theme
-                    )
-                }
-            }
-        }
-        .padding(.leading, 4)
-    }
-
-    @ViewBuilder
-    private func marker(for item: RenderedListItem, index: Int) -> some View {
-        switch item.checkState {
-        case .checked?:
-            Image(systemName: "checkmark.square.fill").accessibilityLabel("Completed task")
-        case .unchecked?:
-            Image(systemName: "square").accessibilityLabel("Incomplete task")
-        case nil:
-            if let start {
-                Text("\(Int(start) + index).")
-            } else {
-                Text("•")
-            }
-        }
-    }
-}
-
-private struct MarkdownTable: View {
-    let alignments: [TableAlignment?]
-    let header: [[InlineRun]]
-    let rows: [[[InlineRun]]]
-    let theme: PlainleafTheme
-
-    var body: some View {
-        ScrollView(.horizontal) {
-            Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
-                GridRow {
-                    ForEach(header.indices, id: \.self) { column in
-                        cell(header[column], column: column, isHeader: true)
-                    }
-                }
-                Divider().gridCellUnsizedAxes(.horizontal)
-                ForEach(rows.indices, id: \.self) { row in
-                    GridRow {
-                        ForEach(header.indices, id: \.self) { column in
-                            cell(column < rows[row].count ? rows[row][column] : [], column: column, isHeader: false)
-                        }
-                    }
-                    if row < rows.count - 1 {
-                        Divider().gridCellUnsizedAxes(.horizontal)
-                    }
-                }
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(theme.borderColor, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-        }
-        .accessibilityLabel("Markdown table")
-    }
-
-    private func cell(_ runs: [InlineRun], column: Int, isHeader: Bool) -> some View {
-        InlineTextView(runs: runs, theme: theme, role: isHeader ? .tableHeader : .tableCell)
-            .frame(minWidth: 130, alignment: alignment(for: column))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .background(isHeader ? theme.selectionColor : Color.clear)
-    }
-
-    private func alignment(for column: Int) -> Alignment {
-        guard column < alignments.count else { return .leading }
-        switch alignments[column] {
-        case .center?: return Alignment.center
-        case .right?: return Alignment.trailing
-        default: return Alignment.leading
-        }
-    }
-}
-
-private struct SafeLocalImage: View {
-    let source: String?
-    let alt: String
-    let documentURL: URL
-    let workspaceURL: URL
-    let theme: PlainleafTheme
-
-    var body: some View {
-        if let imageURL, let image = NSImage(contentsOf: imageURL) {
-            VStack(alignment: .leading, spacing: 7) {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 720, maxHeight: 560)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-                if !alt.isEmpty {
-                    Text(alt)
-                        .font(.caption)
-                        .foregroundStyle(theme.secondaryTextColor)
-                }
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(alt.isEmpty ? "Local image" : alt)
-        } else {
-            HStack(spacing: 10) {
-                Image(systemName: isRemote ? "network.slash" : "photo.badge.exclamationmark")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(isRemote ? "Remote image blocked" : "Local image unavailable")
-                        .fontWeight(.medium)
-                    Text(alt.isEmpty ? (source ?? "Missing image source") : alt)
-                        .font(.caption)
-                        .foregroundStyle(theme.secondaryTextColor)
-                }
-            }
-            .padding(13)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(theme.codeBackgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-        }
-    }
-
-    private var isRemote: Bool {
-        guard let source, let url = URL(string: source), let scheme = url.scheme?.lowercased() else { return false }
-        return scheme == "http" || scheme == "https"
-    }
-
-    private var imageURL: URL? {
-        guard let source, !isRemote else { return nil }
-        let decoded = source.removingPercentEncoding ?? source
-        let candidate = documentURL.deletingLastPathComponent().appendingPathComponent(decoded).standardizedFileURL
-        guard candidate.isDescendant(of: workspaceURL),
-              FileManager.default.fileExists(atPath: candidate.path) else { return nil }
-        return candidate
-    }
-}
-
-private struct HighlightedCodeBlock: View {
-    let language: String?
+private struct HTMLPreviewWebView: NSViewRepresentable {
     let source: String
+    let documentURL: URL
+    let workspaceURL: URL
     let theme: PlainleafTheme
-    @State private var highlighted: AttributedString?
+    let appearance: ReadingAppearance
+    let onOpenLink: (String) -> Void
+    let onActiveHeadingChange: (String?) -> Void
+    @ObservedObject var scrollSync: PreviewScrollSyncController
+    let syncEnabled: Bool
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 0) {
-                Text(language?.isEmpty == false ? language!.uppercased() : "CODE")
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(1.1)
-                Spacer()
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            onOpenLink: onOpenLink,
+            onActiveHeadingChange: onActiveHeadingChange,
+            scrollSync: scrollSync,
+            syncEnabled: syncEnabled
+        )
+    }
+
+    func makeNSView(context: Context) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.navigationDelegate = context.coordinator
+        context.coordinator.webView = webView
+        context.coordinator.startScrollPolling()
+        webView.allowsMagnification = true
+        webView.underPageBackgroundColor = theme.canvas
+        webView.setAccessibilityLabel("Rendered Markdown document")
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.onOpenLink = onOpenLink
+        context.coordinator.onActiveHeadingChange = onActiveHeadingChange
+        context.coordinator.scrollSync = scrollSync
+        context.coordinator.syncEnabled = syncEnabled
+        webView.underPageBackgroundColor = theme.canvas
+
+        var renderer = HTMLDocumentRenderer(
+            documentURL: documentURL,
+            workspaceURL: workspaceURL,
+            theme: theme,
+            appearance: appearance
+        )
+        let html = renderer.render(source)
+        if context.coordinator.loadedHTML != html {
+            context.coordinator.isReloadingContent = true
+            let shouldPreserveScroll = context.coordinator.loadedDocumentURL == documentURL
+            if !shouldPreserveScroll {
+                context.coordinator.lastObservedProgress = nil
+                context.coordinator.lastObservedHeadingAnchor = nil
+                context.coordinator.hasObservedHeadingAnchor = false
             }
-            .foregroundStyle(theme.secondaryTextColor)
-            .padding(.horizontal, 16)
-            .padding(.top, 13)
-            .padding(.bottom, 5)
-            ScrollView(.horizontal) {
-                Group {
-                    if let highlighted {
-                        Text(highlighted)
-                    } else {
-                        Text(source)
+            context.coordinator.loadedHTML = html
+            context.coordinator.loadedDocumentURL = documentURL
+            if shouldPreserveScroll {
+                let coordinator = context.coordinator
+                webView.evaluateJavaScript("window.scrollY") { value, _ in
+                    guard coordinator.loadedHTML == html,
+                          coordinator.loadedDocumentURL == documentURL else { return }
+                    coordinator.pendingScrollOffset = (value as? NSNumber)?.doubleValue ?? 0
+                    webView.loadHTMLString(html, baseURL: nil)
+                }
+            } else {
+                context.coordinator.pendingScrollOffset = 0
+                webView.loadHTMLString(html, baseURL: nil)
+            }
+        }
+        context.coordinator.applySynchronizedScrollIfNeeded()
+    }
+
+    static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        webView.stopLoading()
+        coordinator.stopScrollPolling()
+        webView.navigationDelegate = nil
+        if coordinator.webView === webView {
+            coordinator.webView = nil
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var onOpenLink: (String) -> Void
+        var onActiveHeadingChange: (String?) -> Void
+        var scrollSync: PreviewScrollSyncController
+        var syncEnabled: Bool
+        weak var webView: WKWebView?
+        var loadedHTML: String?
+        var loadedDocumentURL: URL?
+        var pendingScrollOffset: Double = 0
+        var activePrintOperation: NSPrintOperation?
+        var lastAppliedScrollRevision = -1
+        var isApplyingSynchronizedScroll = false
+        var isReloadingContent = false
+        var lastProgrammaticProgress: Double?
+        var lastObservedProgress: Double?
+        var lastObservedHeadingAnchor: String?
+        var hasObservedHeadingAnchor = false
+        var scrollPollTimer: Timer?
+        var isPollingScroll = false
+
+        init(
+            onOpenLink: @escaping (String) -> Void,
+            onActiveHeadingChange: @escaping (String?) -> Void,
+            scrollSync: PreviewScrollSyncController,
+            syncEnabled: Bool
+        ) {
+            self.onOpenLink = onOpenLink
+            self.onActiveHeadingChange = onActiveHeadingChange
+            self.scrollSync = scrollSync
+            self.syncEnabled = syncEnabled
+            super.init()
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(printRequested),
+                name: .plainleafPrint,
+                object: nil
+            )
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(revealHeading(_:)),
+                name: .plainleafRevealHeading,
+                object: nil
+            )
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
+        ) {
+            guard let url = navigationAction.request.url else {
+                decisionHandler(navigationAction.navigationType == .other ? .allow : .cancel)
+                return
+            }
+
+            if navigationAction.navigationType == .linkActivated {
+                if url.scheme == "plainleaf", let destination = destination(from: url) {
+                    onOpenLink(destination)
+                    decisionHandler(.cancel)
+                    return
+                }
+                if let anchor = HTMLPreviewNavigation.localFragmentAnchor(from: url),
+                   let script = HTMLPreviewNavigation.revealLocalFragmentScript(anchor: anchor) {
+                    webView.evaluateJavaScript(script)
+                    decisionHandler(.cancel)
+                    return
+                }
+                decisionHandler(.cancel)
+                return
+            }
+
+            // `loadHTMLString` uses an internal WebKit URL whose scheme is not
+            // API-stable. The document is fully generated by Plainleaf, has a
+            // restrictive CSP, and runs with JavaScript disabled, so permit its
+            // non-user-initiated main-frame load. Every activated link remains
+            // handled by the explicit branch above.
+            decisionHandler(navigationAction.navigationType == .other ? .allow : .cancel)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            if pendingScrollOffset > 0 {
+                let offset = pendingScrollOffset
+                pendingScrollOffset = 0
+                isApplyingSynchronizedScroll = true
+                webView.evaluateJavaScript("window.scrollTo(0, \(offset))") { [weak self] _, _ in
+                    Task { @MainActor in
+                        await Task.yield()
+                        self?.isApplyingSynchronizedScroll = false
+                        self?.isReloadingContent = false
+                        self?.applySynchronizedScrollIfNeeded()
                     }
                 }
-                .font(.system(size: 13.5, design: .monospaced))
-                .textSelection(.enabled)
-                .fixedSize(horizontal: true, vertical: false)
+            } else {
+                scheduleStoredScrollPosition()
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 16)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.codeBackgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .stroke(theme.borderColor.opacity(theme.isDark ? 0.48 : 0.58), lineWidth: 1)
+
+        func startScrollPolling() {
+            guard scrollPollTimer == nil else { return }
+            let timer = Timer(timeInterval: 0.1, target: self, selector: #selector(pollScrollProgress), userInfo: nil, repeats: true)
+            RunLoop.main.add(timer, forMode: .common)
+            scrollPollTimer = timer
         }
-        .onAppear(perform: renderHighlight)
-        .onChange(of: theme, initial: false) { _, _ in renderHighlight() }
-    }
 
-    private func renderHighlight() {
-        guard let highlighter = Highlighter() else {
-            highlighted = nil
-            return
+        func stopScrollPolling() {
+            scrollPollTimer?.invalidate()
+            scrollPollTimer = nil
+            isPollingScroll = false
         }
-        _ = highlighter.setTheme(theme.isDark ? "flexoki-dark" : "flexoki-light", withFont: "SFMono-Regular", ofSize: 13.5)
-        let normalized = normalize(language)
-        if let value = highlighter.highlight(source, as: normalized) ?? highlighter.highlight(source) {
-            highlighted = AttributedString(value)
-        } else {
-            highlighted = nil
-        }
-    }
 
-    private func normalize(_ language: String?) -> String? {
-        guard let value = language?.lowercased(), !value.isEmpty else { return nil }
-        return [
-            "js": "javascript",
-            "ts": "typescript",
-            "py": "python",
-            "sh": "bash",
-            "zsh": "bash",
-            "shell": "bash",
-            "objc": "objectivec"
-        ][value] ?? value
-    }
-}
-
-private struct InlineTextView: View {
-    enum Role {
-        case body
-        case heading(Int)
-        case tableHeader
-        case tableCell
-    }
-
-    let runs: [InlineRun]
-    let theme: PlainleafTheme
-    let role: Role
-    @Environment(\.openURL) private var openURL
-
-    @ViewBuilder
-    var body: some View {
-        if let destination = soleDestination, let url = encodedLink(destination) {
-            Button {
-                openURL(url)
-            } label: {
-                Text(attributedText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        @objc private func pollScrollProgress() {
+            guard let webView,
+                  !isPollingScroll,
+                  !isApplyingSynchronizedScroll,
+                  !isReloadingContent else {
+                return
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(runs.map(\.text).joined())
-            .accessibilityHint("Opens the linked document or website")
-        } else {
-            Text(attributedText)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var soleDestination: String? {
-        let destinations = Set(runs.compactMap(\.destination))
-        guard destinations.count == 1, let destination = destinations.first,
-              runs.allSatisfy({ $0.destination == destination }) else { return nil }
-        return destination
-    }
-
-    private var attributedText: AttributedString {
-        let result = NSMutableAttributedString()
-        for run in runs {
-            let part = NSMutableAttributedString(string: run.text)
-            let range = NSRange(location: 0, length: (run.text as NSString).length)
-            part.addAttributes(baseAttributes(for: run), range: range)
-            if run.style.contains(.strikethrough) {
-                part.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: range)
+            isPollingScroll = true
+            webView.evaluateJavaScript(HTMLPreviewNavigation.scrollSnapshotScript) { [weak self] value, _ in
+                guard let self else { return }
+                self.isPollingScroll = false
+                guard let snapshot = HTMLPreviewScrollSnapshot(javascriptValue: value) else { return }
+                if !self.hasObservedHeadingAnchor ||
+                    self.lastObservedHeadingAnchor != snapshot.activeHeadingAnchor {
+                    self.hasObservedHeadingAnchor = true
+                    self.lastObservedHeadingAnchor = snapshot.activeHeadingAnchor
+                    self.onActiveHeadingChange(snapshot.activeHeadingAnchor)
+                }
+                let progress = snapshot.progress
+                if let lastProgrammaticProgress,
+                   abs(lastProgrammaticProgress - progress) < 0.002 {
+                    self.lastProgrammaticProgress = nil
+                    self.lastObservedProgress = progress
+                    return
+                }
+                self.lastProgrammaticProgress = nil
+                guard self.lastObservedProgress.map({ abs($0 - progress) >= 0.002 }) ?? true else {
+                    return
+                }
+                self.lastObservedProgress = progress
+                self.scrollSync.record(progress, from: .preview, synchronize: self.syncEnabled)
             }
-            if run.style.contains(.code) || run.style.contains(.rawHTML) {
-                part.addAttributes([
-                    .font: NSFont.monospacedSystemFont(ofSize: baseSize * 0.88, weight: .regular),
-                    .foregroundColor: run.style.contains(.rawHTML) ? theme.secondaryText : theme.accent,
-                    .backgroundColor: theme.codeBackground
-                ], range: range)
+        }
+
+        func applySynchronizedScrollIfNeeded() {
+            let update = scrollSync.update
+            guard syncEnabled,
+                  !isReloadingContent,
+                  update.origin == .source,
+                  update.revision != lastAppliedScrollRevision else {
+                return
             }
-            if let destination = run.destination,
-               let url = encodedLink(destination) {
-                part.addAttributes([
-                    .link: url,
-                    .foregroundColor: theme.accent,
-                    .underlineStyle: NSUnderlineStyle.single.rawValue
-                ], range: range)
+            lastAppliedScrollRevision = update.revision
+            applyScrollProgress(update.progress)
+        }
+
+        func scheduleStoredScrollPosition() {
+            let progress = scrollSync.progress(for: .preview)
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.applyScrollProgress(progress)
+                await Task.yield()
+                self?.isReloadingContent = false
+                self?.applySynchronizedScrollIfNeeded()
             }
-            result.append(part)
         }
-        return AttributedString(result)
-    }
 
-    private var baseSize: CGFloat {
-        switch role {
-        case .body: 17.5
-        case let .heading(level): [0, 34, 26, 21.5, 19, 17.5, 16.5][min(max(level, 1), 6)]
-        case .tableHeader, .tableCell: 14.5
+        @objc private func printRequested() {
+            guard let webView, activePrintOperation == nil else { return }
+            let info = NSPrintInfo.shared.copy() as! NSPrintInfo
+            info.horizontalPagination = .fit
+            info.verticalPagination = .automatic
+            info.isHorizontallyCentered = true
+            let operation = webView.printOperation(with: info)
+            operation.showsPrintPanel = true
+            operation.showsProgressPanel = true
+            guard let window = webView.window else {
+                operation.run()
+                return
+            }
+            activePrintOperation = operation
+            operation.runModal(
+                for: window,
+                delegate: self,
+                didRun: #selector(printOperationDidRun(_:success:contextInfo:)),
+                contextInfo: nil
+            )
         }
-    }
 
-    private func baseAttributes(for run: InlineRun) -> [NSAttributedString.Key: Any] {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.lineSpacing = roleLineSpacing
-        paragraph.paragraphSpacing = 2
-
-        var font = readerFont(size: baseSize, weight: defaultWeight)
-        if run.style.contains(.strong) {
-            font = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
+        @objc private func revealHeading(_ notification: Notification) {
+            guard let webView,
+                  let requestedURL = notification.object as? URL,
+                  requestedURL.standardizedFileURL == loadedDocumentURL?.standardizedFileURL,
+                  let anchor = notification.userInfo?["anchor"] as? String,
+                  let script = HTMLPreviewNavigation.revealHeadingScript(anchor: anchor) else {
+                return
+            }
+            webView.evaluateJavaScript(script)
         }
-        if run.style.contains(.emphasis) {
-            font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask)
+
+        @objc private func printOperationDidRun(
+            _ operation: NSPrintOperation,
+            success: Bool,
+            contextInfo: UnsafeMutableRawPointer?
+        ) {
+            activePrintOperation = nil
         }
-        return [
-            .font: font,
-            .foregroundColor: theme.text,
-            .paragraphStyle: paragraph
-        ]
-    }
 
-    private var defaultWeight: NSFont.Weight {
-        switch role {
-        case .heading, .tableHeader: .semibold
-        default: .regular
+        private func destination(from url: URL) -> String? {
+            URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?
+                .first(where: { $0.name == "destination" })?
+                .value
         }
-    }
 
-    private var roleLineSpacing: CGFloat {
-        switch role {
-        case .body: 7.5
-        case .heading: 3.5
-        case .tableHeader, .tableCell: 3
+        private func applyScrollProgress(_ progress: Double) {
+            guard let webView else { return }
+            let normalized = min(max(progress, 0), 1)
+            isApplyingSynchronizedScroll = true
+            lastProgrammaticProgress = normalized
+            webView.evaluateJavaScript(
+                "window.scrollTo(0, Math.max(0, document.documentElement.scrollHeight - window.innerHeight) * \(normalized))"
+            ) { [weak self] _, _ in
+                Task { @MainActor in
+                    await Task.yield()
+                    self?.lastObservedProgress = normalized
+                    self?.isApplyingSynchronizedScroll = false
+                }
+            }
         }
-    }
-
-    private func readerFont(size: CGFloat, weight: NSFont.Weight) -> NSFont {
-        let postScriptName = weight == .regular ? "Charter-Roman" : "Charter-Bold"
-        let base = NSFont(name: postScriptName, size: size)
-            ?? NSFont.systemFont(ofSize: size, weight: weight)
-        let cjkName = weight == .regular ? "PingFangSC-Regular" : "PingFangSC-Semibold"
-        guard let cjk = NSFont(name: cjkName, size: size) else { return base }
-        let descriptor = base.fontDescriptor.addingAttributes([
-            .cascadeList: [cjk.fontDescriptor]
-        ])
-        return NSFont(descriptor: descriptor, size: size) ?? base
-    }
-
-    private func encodedLink(_ destination: String) -> URL? {
-        var components = URLComponents()
-        components.scheme = "plainleaf"
-        components.host = "open"
-        components.queryItems = [URLQueryItem(name: "destination", value: destination)]
-        return components.url
     }
 }

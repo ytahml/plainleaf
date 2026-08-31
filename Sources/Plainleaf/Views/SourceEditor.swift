@@ -11,6 +11,11 @@ extension Notification.Name {
 struct SourceEditor: NSViewRepresentable {
     @Binding var text: String
     let theme: PlainleafTheme
+    let revealRequest: SourceRevealRequest?
+    let documentURL: URL
+    @ObservedObject var scrollSync: PreviewScrollSyncController
+    let syncEnabled: Bool
+    let compactLayout: Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -33,7 +38,7 @@ struct SourceEditor: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.allowsUndo = true
         textView.usesFindBar = true
-        textView.textContainerInset = NSSize(width: 56, height: 48)
+        textView.textContainerInset = editorInsets
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
@@ -45,7 +50,18 @@ struct SourceEditor: NSViewRepresentable {
 
         scrollView.documentView = textView
         context.coordinator.textView = textView
+        context.coordinator.scrollView = scrollView
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.scrollBoundsDidChange(_:)),
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
         context.coordinator.applyHighlighting(theme: theme)
+        context.coordinator.revealIfNeeded(revealRequest)
+        context.coordinator.loadedDocumentURL = documentURL
+        context.coordinator.scheduleStoredScrollPosition()
         return scrollView
     }
 
@@ -59,15 +75,44 @@ struct SourceEditor: NSViewRepresentable {
             textView.setSelectedRange(NSRange(location: min(selection.location, (text as NSString).length), length: 0))
             context.coordinator.isApplyingAttributes = false
         }
+        textView.textContainerInset = editorInsets
         scrollView.backgroundColor = theme.surface
         context.coordinator.applyHighlighting(theme: theme)
+        context.coordinator.revealIfNeeded(revealRequest)
+        if context.coordinator.loadedDocumentURL != documentURL {
+            context.coordinator.loadedDocumentURL = documentURL
+            context.coordinator.scheduleStoredScrollPosition()
+        }
+        context.coordinator.applySynchronizedScrollIfNeeded()
+    }
+
+    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
+        NotificationCenter.default.removeObserver(
+            coordinator,
+            name: NSView.boundsDidChangeNotification,
+            object: scrollView.contentView
+        )
+        coordinator.scrollView = nil
+        coordinator.textView = nil
+    }
+
+    private var editorInsets: NSSize {
+        compactLayout
+            ? NSSize(width: 28, height: 32)
+            : NSSize(width: 56, height: 48)
     }
 
     @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: SourceEditor
         weak var textView: NSTextView?
+        weak var scrollView: NSScrollView?
         var isApplyingAttributes = false
+        var lastRevealRequestID: UUID?
+        var lastAppliedScrollRevision = -1
+        var loadedDocumentURL: URL?
+        var isApplyingSynchronizedScroll = false
+        var lastProgrammaticProgress: Double?
 
         init(parent: SourceEditor) {
             self.parent = parent
@@ -132,6 +177,90 @@ struct SourceEditor: NSViewRepresentable {
                 .paragraphStyle: paragraph
             ]
             isApplyingAttributes = false
+        }
+
+        func revealIfNeeded(_ request: SourceRevealRequest?) {
+            guard let request,
+                  request.id != lastRevealRequestID,
+                  let textView,
+                  let range = SourceRevealLocator.range(
+                    in: textView.string,
+                    query: request.query,
+                    lineNumber: request.lineNumber
+                  ) else {
+                return
+            }
+            lastRevealRequestID = request.id
+            textView.setSelectedRange(range)
+            textView.scrollRangeToVisible(range)
+            Task { @MainActor [weak textView] in
+                await Task.yield()
+                guard let textView else { return }
+                textView.window?.makeFirstResponder(textView)
+            }
+        }
+
+        @objc func scrollBoundsDidChange(_ notification: Notification) {
+            guard let scrollView else { return }
+            let progress = scrollProgress(in: scrollView)
+            if isApplyingSynchronizedScroll {
+                return
+            }
+            if let lastProgrammaticProgress,
+               abs(lastProgrammaticProgress - progress) < 0.002 {
+                self.lastProgrammaticProgress = nil
+                return
+            }
+            lastProgrammaticProgress = nil
+            parent.scrollSync.record(progress, from: .source, synchronize: parent.syncEnabled)
+        }
+
+        func applySynchronizedScrollIfNeeded() {
+            let update = parent.scrollSync.update
+            guard parent.syncEnabled,
+                  update.origin == .preview,
+                  update.revision != lastAppliedScrollRevision else {
+                return
+            }
+            lastAppliedScrollRevision = update.revision
+            applyScrollProgress(update.progress)
+        }
+
+        func scheduleStoredScrollPosition() {
+            let progress = parent.scrollSync.progress(for: .source)
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.applyScrollProgress(progress)
+            }
+        }
+
+        private func scrollProgress(in scrollView: NSScrollView) -> Double {
+            guard let documentView = scrollView.documentView else { return 0 }
+            return PreviewScrollMetrics.progress(
+                offset: Double(scrollView.contentView.bounds.minY),
+                contentExtent: Double(documentView.bounds.height),
+                viewportExtent: Double(scrollView.contentView.bounds.height)
+            )
+        }
+
+        private func applyScrollProgress(_ progress: Double) {
+            guard let scrollView, let documentView = scrollView.documentView else { return }
+            let offset = PreviewScrollMetrics.offset(
+                progress: progress,
+                contentExtent: Double(documentView.bounds.height),
+                viewportExtent: Double(scrollView.contentView.bounds.height)
+            )
+            isApplyingSynchronizedScroll = true
+            lastProgrammaticProgress = progress
+            scrollView.contentView.scroll(to: NSPoint(
+                x: scrollView.contentView.bounds.minX,
+                y: CGFloat(offset)
+            ))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.isApplyingSynchronizedScroll = false
+            }
         }
 
         @objc private func bold() { wrap(prefix: "**", suffix: "**", placeholder: "bold text") }

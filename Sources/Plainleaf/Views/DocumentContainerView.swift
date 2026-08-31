@@ -4,6 +4,7 @@ struct DocumentContainerView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var session: DocumentSession
     let theme: PlainleafTheme
+    @State private var showsReadingAppearance = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,16 +15,13 @@ struct DocumentContainerView: View {
             }
 
             Group {
-                if model.mode == .source {
+                switch model.mode {
+                case .source:
                     sourceSurface
-                } else {
-                    MarkdownReaderView(
-                        source: session.text,
-                        documentURL: session.url,
-                        workspaceURL: session.workspaceURL,
-                        theme: theme,
-                        onOpenLink: model.openLink
-                    )
+                case .split:
+                    splitSurface
+                case .reading:
+                    reader(syncEnabled: false)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -42,11 +40,15 @@ struct DocumentContainerView: View {
                     .foregroundStyle(theme.secondaryTextColor)
                     .lineLimit(1)
                 Text(session.url.deletingPathExtension().lastPathComponent)
-                    .font(.system(size: 19, weight: .semibold, design: .serif))
+                    .font(Font(PlainleafTypography.readingFont(size: 19, weight: .semibold)))
                     .lineLimit(1)
             }
 
             Spacer(minLength: 20)
+
+            if model.mode != .source {
+                readingAppearanceButton
+            }
 
             ModeSwitch(model: model, theme: theme)
         }
@@ -61,7 +63,7 @@ struct DocumentContainerView: View {
     private var sourceSurface: some View {
         ZStack {
             theme.canvasColor
-            SourceEditor(text: $session.text, theme: theme)
+            sourceEditor(syncEnabled: false, compactLayout: false)
                 .frame(maxWidth: 860)
                 .background(theme.surfaceColor)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -73,6 +75,104 @@ struct DocumentContainerView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
         }
+    }
+
+    private var splitSurface: some View {
+        HSplitView {
+            splitPane(title: "MARKDOWN SOURCE", symbol: "chevron.left.forwardslash.chevron.right") {
+                sourceEditor(syncEnabled: true, compactLayout: true)
+            }
+            .frame(minWidth: 250, idealWidth: 420, maxWidth: .infinity)
+
+            splitPane(title: "HTML PREVIEW", symbol: "book.pages") {
+                reader(syncEnabled: true)
+            }
+            .frame(minWidth: 270, idealWidth: 440, maxWidth: .infinity)
+        }
+        .background(theme.canvasColor)
+        .accessibilityLabel("Synchronized source and HTML preview")
+    }
+
+    private func sourceEditor(syncEnabled: Bool, compactLayout: Bool) -> some View {
+        SourceEditor(
+            text: $session.text,
+            theme: theme,
+            revealRequest: model.sourceRevealRequest?.documentURL.standardizedFileURL == session.url.standardizedFileURL
+                ? model.sourceRevealRequest
+                : nil,
+            documentURL: session.url,
+            scrollSync: model.previewScrollSync,
+            syncEnabled: syncEnabled,
+            compactLayout: compactLayout
+        )
+    }
+
+    private func reader(syncEnabled: Bool) -> some View {
+        MarkdownReaderView(
+            source: session.text,
+            documentURL: session.url,
+            workspaceURL: session.workspaceURL,
+            theme: theme,
+            appearance: model.readingAppearance,
+            onOpenLink: model.openLink,
+            onActiveHeadingChange: { [weak model, documentURL = session.url] anchor in
+                model?.updateActiveHeading(anchor, for: documentURL)
+            },
+            scrollSync: model.previewScrollSync,
+            syncEnabled: syncEnabled
+        )
+    }
+
+    private var readingAppearanceButton: some View {
+        Button {
+            showsReadingAppearance.toggle()
+        } label: {
+            Image(systemName: "textformat.size")
+                .font(.system(size: 12, weight: .semibold))
+                .frame(width: 27, height: 25)
+                .background(showsReadingAppearance ? theme.selectionColor : Color.clear)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(showsReadingAppearance ? theme.accentColor : theme.secondaryTextColor)
+        .help("Adjust reading typography")
+        .accessibilityLabel("Reading appearance")
+        .popover(isPresented: $showsReadingAppearance, arrowEdge: .bottom) {
+            ReadingAppearancePanel(model: model, theme: theme)
+        }
+    }
+
+    private func splitPane<Content: View>(
+        title: String,
+        symbol: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 7) {
+                Image(systemName: symbol)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(theme.accentColor)
+                Text(title)
+                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                    .tracking(0.9)
+                Spacer()
+                Image(systemName: "arrow.up.and.down")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(theme.secondaryTextColor.opacity(0.75))
+                    .help("Scroll position is synchronized")
+            }
+            .foregroundStyle(theme.secondaryTextColor)
+            .padding(.horizontal, 12)
+            .frame(height: 31)
+            .background(theme.chromeColor)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(theme.borderColor.opacity(0.72)).frame(height: 1)
+            }
+
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(theme.surfaceColor)
     }
 
     private var conflictBanner: some View {
@@ -163,6 +263,126 @@ struct DocumentContainerView: View {
     }
 }
 
+private struct ReadingAppearancePanel: View {
+    @ObservedObject var model: AppModel
+    let theme: PlainleafTheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            specimen
+
+            VStack(alignment: .leading, spacing: 8) {
+                settingLabel("TEXT SIZE")
+                HStack(spacing: 10) {
+                    Button { model.adjustReadingTextSize(by: -ReadingAppearance.textSizeStep) } label: {
+                        Image(systemName: "minus")
+                            .frame(width: 24, height: 20)
+                    }
+                    .disabled(!model.readingAppearance.canDecreaseTextSize)
+                    .accessibilityLabel("Decrease reading text size")
+
+                    Text(model.readingAppearance.textSize.formatted(.number.precision(.fractionLength(1))))
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .frame(maxWidth: .infinity)
+                        .accessibilityLabel("Reading text size")
+                        .accessibilityValue(model.readingAppearance.textSize.formatted())
+
+                    Button { model.adjustReadingTextSize(by: ReadingAppearance.textSizeStep) } label: {
+                        Image(systemName: "plus")
+                            .frame(width: 24, height: 20)
+                    }
+                    .disabled(!model.readingAppearance.canIncreaseTextSize)
+                    .accessibilityLabel("Increase reading text size")
+                }
+                .buttonStyle(.bordered)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                settingLabel("LINE SPACING")
+                Picker("Line spacing", selection: leadingBinding) {
+                    ForEach(ReadingLeading.allCases) { leading in
+                        Text(leading.label).tag(leading)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                settingLabel("PAGE WIDTH")
+                Picker("Page width", selection: measureBinding) {
+                    ForEach(ReadingMeasure.allCases) { measure in
+                        Text(measure.label).tag(measure)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+
+            HStack {
+                Text("Used in Split and Read.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(theme.secondaryTextColor)
+                Spacer()
+                Button("Reset") { model.resetReadingAppearance() }
+                    .disabled(model.readingAppearance.isStandard)
+            }
+        }
+        .padding(18)
+        .frame(width: 330)
+        .background(theme.chromeColor)
+    }
+
+    private var specimen: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 13) {
+            Text("Aa 文章")
+                .font(Font(PlainleafTypography.readingFont(
+                    size: model.readingAppearance.textSize + 8,
+                    weight: .medium
+                )))
+                .foregroundStyle(theme.textColor)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("READING SET")
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .tracking(1.1)
+                Text("New York · Songti")
+                    .font(.system(size: 10.5))
+            }
+            .foregroundStyle(theme.secondaryTextColor)
+        }
+        .padding(.horizontal, 13)
+        .frame(height: 64)
+        .background(theme.surfaceColor)
+        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .stroke(theme.borderColor.opacity(0.8), lineWidth: 1)
+        }
+    }
+
+    private func settingLabel(_ value: String) -> some View {
+        Text(value)
+            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+            .tracking(1)
+            .foregroundStyle(theme.secondaryTextColor)
+    }
+
+    private var leadingBinding: Binding<ReadingLeading> {
+        Binding(
+            get: { model.readingAppearance.leading },
+            set: { model.setReadingLeading($0) }
+        )
+    }
+
+    private var measureBinding: Binding<ReadingMeasure> {
+        Binding(
+            get: { model.readingAppearance.measure },
+            set: { model.setReadingMeasure($0) }
+        )
+    }
+}
+
 private struct ModeSwitch: View {
     @ObservedObject var model: AppModel
     let theme: PlainleafTheme
@@ -170,6 +390,7 @@ private struct ModeSwitch: View {
     var body: some View {
         HStack(spacing: 2) {
             modeButton(.source, label: "Write", symbol: "pencil.line")
+            modeButton(.split, label: "Split", symbol: "rectangle.split.2x1")
             modeButton(.reading, label: "Read", symbol: "book.pages")
         }
         .padding(3)
@@ -184,7 +405,7 @@ private struct ModeSwitch: View {
     private func modeButton(_ mode: ReadingMode, label: String, symbol: String) -> some View {
         let isSelected = model.mode == mode
         return Button {
-            if !isSelected { model.toggleMode() }
+            if !isSelected { model.setMode(mode) }
         } label: {
             Label(label, systemImage: symbol)
                 .font(.system(size: 11, weight: .semibold))
@@ -196,8 +417,16 @@ private struct ModeSwitch: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(isSelected ? theme.textColor : theme.secondaryTextColor)
-        .accessibilityLabel(label == "Write" ? "Show source editor" : "Show reading mode")
+        .accessibilityLabel(accessibilityLabel(for: mode))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func accessibilityLabel(for mode: ReadingMode) -> String {
+        switch mode {
+        case .source: "Show source editor"
+        case .split: "Show synchronized source and preview"
+        case .reading: "Show reading mode"
+        }
     }
 }
 

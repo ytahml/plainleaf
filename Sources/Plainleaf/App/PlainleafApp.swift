@@ -30,10 +30,15 @@ private struct PlainleafCommands: Commands {
             Button("Save") { model.save() }
                 .keyboardShortcut("s")
         }
+        CommandGroup(after: .saveItem) {
+            Button("Export HTML…") { model.exportHTML() }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+                .disabled(model.document == nil)
+        }
         CommandGroup(replacing: .printItem) {
             Button("Print…") { NotificationCenter.default.post(name: .plainleafPrint, object: nil) }
                 .keyboardShortcut("p")
-                .disabled(model.document == nil || model.mode != .reading)
+                .disabled(model.document == nil || model.mode == .source)
         }
         CommandMenu("Format") {
             Button("Bold") { NotificationCenter.default.post(name: .plainleafBold, object: nil) }
@@ -45,11 +50,68 @@ private struct PlainleafCommands: Commands {
             Button("Inline Code") { NotificationCenter.default.post(name: .plainleafInlineCode, object: nil) }
                 .keyboardShortcut("`", modifiers: [.command, .shift])
         }
+        CommandMenu("Navigate") {
+            Button("Search Workspace") {
+                NotificationCenter.default.post(name: .plainleafFocusWorkspaceSearch, object: nil)
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+            .disabled(model.workspace == nil)
+
+            Button("Clear Workspace Search") {
+                model.clearWorkspaceSearch()
+            }
+            .disabled(!model.isWorkspaceSearchActive)
+        }
         CommandMenu("Reading") {
-            Button(model.mode == .source ? "Show Reading Mode" : "Show Source") {
-                model.toggleMode()
+            Button("Cycle View Mode") {
+                model.cycleMode()
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Show Source") { model.setMode(.source) }
+                .disabled(model.document == nil || model.mode == .source)
+            Button("Show Split View") { model.setMode(.split) }
+                .disabled(model.document == nil || model.mode == .split)
+            Button("Show Reading Mode") { model.setMode(.reading) }
+                .disabled(model.document == nil || model.mode == .reading)
+
+            Divider()
+
+            Button(model.showsDocumentOutline ? "Collapse Document Outline" : "Expand Document Outline") {
+                model.showsDocumentOutline.toggle()
+            }
+            .keyboardShortcut("o", modifiers: [.command, .option])
+            .disabled(model.document == nil || model.mode == .source)
+
+            Divider()
+
+            Button("Increase Reading Text Size") {
+                model.adjustReadingTextSize(by: ReadingAppearance.textSizeStep)
+            }
+            .keyboardShortcut("+")
+            .disabled(
+                model.document == nil
+                    || model.mode == .source
+                    || !model.readingAppearance.canIncreaseTextSize
+            )
+
+            Button("Decrease Reading Text Size") {
+                model.adjustReadingTextSize(by: -ReadingAppearance.textSizeStep)
+            }
+            .keyboardShortcut("-")
+            .disabled(
+                model.document == nil
+                    || model.mode == .source
+                    || !model.readingAppearance.canDecreaseTextSize
+            )
+
+            Button("Reset Reading Appearance") {
+                model.resetReadingAppearance()
+            }
+            .keyboardShortcut("0")
+            .disabled(model.document == nil || model.mode == .source || model.readingAppearance.isStandard)
         }
     }
 }

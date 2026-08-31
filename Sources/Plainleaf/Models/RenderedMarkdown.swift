@@ -2,6 +2,12 @@ import Foundation
 
 struct RenderedDocument: Equatable {
     let blocks: [RenderedBlock]
+    let footnotes: [RenderedFootnote]
+
+    init(blocks: [RenderedBlock], footnotes: [RenderedFootnote] = []) {
+        self.blocks = blocks
+        self.footnotes = footnotes
+    }
 }
 
 struct RenderedBlock: Identifiable, Equatable {
@@ -32,6 +38,21 @@ struct RenderedListItem: Equatable {
     let blocks: [RenderedBlock]
 }
 
+struct RenderedFootnote: Equatable {
+    let label: String
+    let anchor: String
+    let number: Int
+    let referenceCount: Int
+    let blocks: [RenderedBlock]
+}
+
+struct RenderedFootnoteReference: Equatable {
+    let label: String
+    let anchor: String
+    let number: Int
+    let occurrence: Int
+}
+
 enum TableAlignment: Equatable {
     case left
     case center
@@ -52,4 +73,17 @@ struct InlineRun: Equatable {
     let text: String
     let style: Style
     let destination: String?
+    let footnoteReference: RenderedFootnoteReference?
+
+    init(
+        text: String,
+        style: Style,
+        destination: String?,
+        footnoteReference: RenderedFootnoteReference? = nil
+    ) {
+        self.text = text
+        self.style = style
+        self.destination = destination
+        self.footnoteReference = footnoteReference
+    }
 }
