@@ -13,19 +13,19 @@ struct WorkspaceSearchField: View {
     var body: some View {
         HStack(spacing: 7) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(isFocused ? theme.accentColor : theme.secondaryTextColor)
 
             TextField("Search notes", text: $model.workspaceSearchQuery)
                 .textFieldStyle(.plain)
-                .font(.system(size: 12.5))
+                .font(.system(size: 12.5, design: .rounded))
                 .focused($isFocused)
                 .onSubmit(openFirstResult)
                 .accessibilityLabel("Search workspace Markdown")
 
             if model.workspaceSearchQuery.isEmpty {
                 Text("⇧⌘F")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
                     .foregroundStyle(theme.secondaryTextColor.opacity(0.72))
                     .accessibilityHidden(true)
             } else {
@@ -42,19 +42,19 @@ struct WorkspaceSearchField: View {
                 .accessibilityLabel("Clear workspace search")
             }
         }
-        .padding(.horizontal, 10)
-        .frame(height: 31)
-        .background(theme.codeBackgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .padding(.horizontal, 11)
+        .frame(height: 34)
+        .background(theme.surfaceColor.opacity(0.84))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(
-                    isFocused ? theme.accentColor.opacity(0.78) : theme.borderColor.opacity(0.78),
-                    lineWidth: 1
+                    isFocused ? theme.accentColor.opacity(0.9) : theme.borderColor.opacity(0.76),
+                    lineWidth: isFocused ? 1.5 : 1
                 )
         }
         .padding(.horizontal, 12)
-        .padding(.bottom, 9)
+        .padding(.bottom, 4)
         .onReceive(NotificationCenter.default.publisher(for: .plainleafFocusWorkspaceSearch)) { _ in
             isFocused = true
         }
@@ -99,10 +99,9 @@ struct WorkspaceSearchResultsView: View {
                 ) { EmptyView() }
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 4) {
                         ForEach(model.workspaceSearchResponse.results) { result in
                             searchResult(result)
-                            Divider().overlay(theme.borderColor.opacity(0.58))
                         }
 
                         if model.workspaceSearchResponse.totalResultCount > model.workspaceSearchResponse.results.count {
@@ -112,6 +111,8 @@ struct WorkspaceSearchResultsView: View {
                                 .padding(12)
                         }
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 10)
                 }
             }
         }
@@ -124,25 +125,22 @@ struct WorkspaceSearchResultsView: View {
                 ProgressView().controlSize(.mini)
             }
             Text(summaryText)
-                .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                .tracking(0.7)
+                .font(.system(size: 10.5, weight: .medium, design: .rounded))
             Spacer()
             if model.workspaceSearchResponse.unreadableFileCount > 0 {
                 Text("\(model.workspaceSearchResponse.unreadableFileCount) SKIPPED")
+                    .font(.system(size: 9.5, weight: .medium, design: .rounded))
                     .help("Some Markdown files could not be read as UTF-8")
             }
         }
         .foregroundStyle(theme.secondaryTextColor)
         .padding(.horizontal, 16)
         .frame(height: 31)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(theme.borderColor.opacity(0.58)).frame(height: 1)
-        }
     }
 
     private var summaryText: String {
         let count = model.workspaceSearchResponse.totalResultCount
-        return count == 1 ? "1 NOTE FOUND" : "\(count) NOTES FOUND"
+        return count == 1 ? "1 note found" : "\(count) notes found"
     }
 
     private func searchResult(_ result: WorkspaceSearchResult) -> some View {
@@ -152,12 +150,13 @@ struct WorkspaceSearchResultsView: View {
                 model.openSearchResult(result, match: nil)
             } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(selected ? theme.accentColor : theme.borderColor)
-                        .frame(width: 3, height: 18)
+                    Image(systemName: selected ? "doc.text.fill" : "doc.text")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(selected ? theme.accentColor : theme.secondaryTextColor)
+                        .frame(width: 16)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(result.displayName)
-                            .font(.system(size: 12.5, weight: .semibold))
+                            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                             .foregroundStyle(theme.textColor)
                             .lineLimit(1)
                         Text(result.file.relativePath)
@@ -166,13 +165,17 @@ struct WorkspaceSearchResultsView: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 5)
-                    Text(result.occurrenceCount > 0 ? "\(result.occurrenceCount)" : "PATH")
-                        .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+                    Text(result.occurrenceCount > 0 ? "\(result.occurrenceCount)" : "Path")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
                         .foregroundStyle(result.pathMatched ? theme.accentColor : theme.secondaryTextColor)
+                        .padding(.horizontal, 7)
+                        .frame(height: 20)
+                        .background(theme.codeBackgroundColor)
+                        .clipShape(Capsule())
                 }
                 .contentShape(Rectangle())
                 .padding(.horizontal, 10)
-                .padding(.vertical, 9)
+                .padding(.vertical, 8)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Open \(result.file.relativePath)")
@@ -183,7 +186,7 @@ struct WorkspaceSearchResultsView: View {
                 } label: {
                     HStack(alignment: .top, spacing: 7) {
                         Text("L\(match.lineNumber)")
-                            .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
                             .foregroundStyle(theme.secondaryTextColor)
                             .frame(width: 29, alignment: .trailing)
                         highlighted(match.excerpt)
@@ -205,13 +208,18 @@ struct WorkspaceSearchResultsView: View {
                 Text("File path match")
                     .font(.system(size: 10.5))
                     .foregroundStyle(theme.secondaryTextColor)
-                    .padding(.leading, 49)
+                    .padding(.leading, 43)
                     .padding(.bottom, 9)
             } else {
                 Color.clear.frame(height: 4)
             }
         }
-        .background(selected ? theme.selectionColor.opacity(0.42) : Color.clear)
+        .background(selected ? theme.selectionColor.opacity(0.74) : theme.surfaceColor.opacity(0.52))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(selected ? theme.accentColor.opacity(0.16) : theme.borderColor.opacity(0.48), lineWidth: 1)
+        }
     }
 
     private func highlighted(_ value: String) -> Text {
@@ -243,7 +251,7 @@ struct WorkspaceSearchResultsView: View {
             }
             accessory()
             Text(title)
-                .font(.system(size: 12.5, weight: .semibold))
+                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
             if let detail {
                 Text(detail)
                     .font(.system(size: 11.5))

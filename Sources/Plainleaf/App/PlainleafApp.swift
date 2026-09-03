@@ -4,6 +4,10 @@ import SwiftUI
 struct PlainleafApp: App {
     @StateObject private var model = AppModel()
 
+    init() {
+        PlainleafTypography.prepareBundledFonts()
+    }
+
     var body: some Scene {
         WindowGroup {
             PlainleafRootView(model: model)

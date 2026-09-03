@@ -64,7 +64,8 @@ Plainleaf lists directories and files ending in `.md`, `.markdown`, or `.mdown`.
 ## Standalone HTML export
 
 - `File > Export HTML…` or `Shift-Command-E` exports the current in-memory Markdown, including edits that have not yet reached disk.
-- The output is one UTF-8 `.html` file using the current Flexoki theme and reading appearance. Verified local raster images are embedded as data URLs; no asset folder is created.
+- The output is one UTF-8 `.html` file using the current Light or Dark theme and reading appearance. Verified local raster images are embedded as data URLs; no asset folder is created.
+- The app-bundled reading font is not copied into exported HTML. A viewer with LXGW WenKai GB Lite installed can use it; otherwise the document falls back to the platform serif stack without a network request.
 - The exported document retains semantic HTML, syntax highlighting, footnotes, print CSS, the restrictive CSP, no-referrer metadata, and a `script-src 'none'` / `connect-src 'none'` runtime boundary.
 - Page fragments, relative links, HTTPS/HTTP links, and mail links remain clickable. Plainleaf-specific URLs are removed; executable, data, file, protocol-relative, absolute-path, control-character, and unsupported-scheme destinations render as visibly blocked text.
 - Relative links remain relative to the exported file. Moving the file away from linked documents can therefore break those links; linked Markdown files are not silently copied or converted.
@@ -72,13 +73,13 @@ Plainleaf lists directories and files ending in `.md`, `.markdown`, or `.mdown`.
 
 ## Visual language
 
-- Flexoki Light: neutral paper and soft-gray canvas, near-black text, blue emphasis, and restrained orange warnings
-- Flexoki Dark: inky black canvas and charcoal surfaces, softened light text, blue emphasis, and adjusted orange warnings
-- UI: SF Pro with PingFang SC fallback; source and utility labels: SF Mono; reading: New York with Songti SC and system fallbacks; code: SF Mono
-- One collapsible library sidebar with an optional page index, a document header, and a quiet toolbar; single-pane modes use a centered surface while split mode becomes an editor's-desk pair separated by a restrained working seam
-- Search temporarily replaces the library tree with a paper-index-style result list; clearing it restores the tree and reading outline
-- The selected-file bookmark, page-index markers, and the reading-mode heading rule share a leaf-vein motif
-- Theme follows the system by default and can be fixed to Flexoki Light or Flexoki Dark
+- Light: cool fog canvas, near-white surfaces, graphite text, deep blue emphasis, and restrained orange warnings
+- Dark: charcoal canvas and lifted graphite surfaces, softened light text, pale blue emphasis, and adjusted orange warnings
+- UI: SF Pro Rounded with PingFang SC fallback; source and data labels: SF Mono; reading: bundled LXGW WenKai GB Lite with system serif fallbacks; code: SF Mono
+- One collapsible library sidebar with an optional page index and a floating rounded document control shelf; single-pane modes use a centered surface while Split keeps a native draggable divider
+- Search temporarily replaces the library tree with compact rounded result groups; clearing it restores the tree and reading outline
+- Selected notes and the active outline heading share the same soft blue selection surface, reinforced by system icons and font weight rather than color alone
+- Theme follows the system by default and can be fixed to Light or Dark
 
 ## Data and privacy
 

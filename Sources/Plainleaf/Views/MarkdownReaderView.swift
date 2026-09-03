@@ -182,11 +182,11 @@ private struct HTMLPreviewWebView: NSViewRepresentable {
                     guard coordinator.loadedHTML == html,
                           coordinator.loadedDocumentURL == documentURL else { return }
                     coordinator.pendingScrollOffset = (value as? NSNumber)?.doubleValue ?? 0
-                    webView.loadHTMLString(html, baseURL: nil)
+                    webView.loadHTMLString(html, baseURL: PlainleafTypography.bundledFontBaseURL)
                 }
             } else {
                 context.coordinator.pendingScrollOffset = 0
-                webView.loadHTMLString(html, baseURL: nil)
+                webView.loadHTMLString(html, baseURL: PlainleafTypography.bundledFontBaseURL)
             }
         }
         context.coordinator.applySynchronizedScrollIfNeeded()

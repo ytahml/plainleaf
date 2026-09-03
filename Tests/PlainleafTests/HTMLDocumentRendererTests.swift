@@ -162,6 +162,9 @@ final class HTMLDocumentRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("font-size: var(--body-size)"))
         XCTAssertTrue(html.contains("line-height: var(--body-leading)"))
         XCTAssertTrue(html.contains("width: min(100%, var(--paper-width))"))
+        XCTAssertTrue(html.contains("font-family: \"LXGW WenKai GB Lite\""))
+        XCTAssertTrue(html.contains("Fonts/LXGWWenKaiGBLite-Regular.ttf"))
+        XCTAssertTrue(html.contains("font-src 'self' file:"))
         XCTAssertFalse(html.contains("body { font-size: 16.5px; }"))
     }
 
@@ -200,6 +203,8 @@ final class HTMLDocumentRendererTests: XCTestCase {
             XCTAssertFalse(html.contains("href=\"file:"))
             XCTAssertTrue(html.contains("script-src 'none'"))
             XCTAssertTrue(html.contains("connect-src 'none'"))
+            XCTAssertTrue(html.contains("font-src 'none'"))
+            XCTAssertFalse(html.contains("@font-face"))
         }
     }
 

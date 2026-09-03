@@ -45,7 +45,7 @@ final class AppThemeTests: XCTestCase {
         XCTAssertEqual(ReadingAppearance.restore(from: defaults), expected)
     }
 
-    func testFlexokiThemesKeepInterfaceColorsReadable() {
+    func testLightAndDarkThemesKeepInterfaceColorsReadable() {
         for theme in [PlainleafTheme.paper, .ink] {
             XCTAssertGreaterThanOrEqual(contrast(theme.text, theme.surface), 7)
             XCTAssertGreaterThanOrEqual(contrast(theme.secondaryText, theme.surface), 4.5)
@@ -72,22 +72,15 @@ final class AppThemeTests: XCTestCase {
         )
     }
 
-    func testReadingTypographyUsesSystemSerifWithSongtiCascade() throws {
+    func testReadingTypographyLoadsBundledLXGWWenKai() {
+        XCTAssertTrue(PlainleafTypography.prepareBundledFonts())
+
         let regular = PlainleafTypography.readingFont(size: 17.5)
-        XCTAssertEqual(regular.familyName, ".AppleSystemUIFontSerif")
-        XCTAssertEqual(try cascadeFontName(in: regular), "STSongti-SC-Regular")
+        XCTAssertEqual(regular.familyName, PlainleafTypography.readingFamilyName)
+        XCTAssertEqual(regular.fontName, PlainleafTypography.readingPostScriptName)
 
         let semibold = PlainleafTypography.readingFont(size: 21.5, weight: .semibold)
-        XCTAssertEqual(semibold.familyName, ".AppleSystemUIFontSerif")
-        XCTAssertEqual(try cascadeFontName(in: semibold), "STSongti-SC-Bold")
-    }
-
-    private func cascadeFontName(in font: NSFont) throws -> String {
-        let descriptors = try XCTUnwrap(
-            font.fontDescriptor.object(forKey: .cascadeList) as? [NSFontDescriptor]
-        )
-        let descriptor = try XCTUnwrap(descriptors.first)
-        return try XCTUnwrap(descriptor.object(forKey: .name) as? String)
+        XCTAssertEqual(semibold.familyName, PlainleafTypography.readingFamilyName)
     }
 
     private func contrast(_ foreground: NSColor, _ background: NSColor) -> CGFloat {

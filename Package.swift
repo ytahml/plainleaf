@@ -22,7 +22,15 @@ let package = Package(
                 .product(name: "Highlighter", package: "HighlighterSwift")
             ],
             path: "Sources/Plainleaf",
-            exclude: ["Resources"],
+            exclude: [
+                "Resources/AppIcon.icns",
+                "Resources/AppIcon.iconset",
+                "Resources/Info.plist",
+                "Resources/Plainleaf.entitlements"
+            ],
+            resources: [
+                .copy("Resources/Fonts")
+            ],
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency")
             ]

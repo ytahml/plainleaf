@@ -45,7 +45,7 @@ struct HTMLDocumentRenderer {
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <meta name="generator" content="Plainleaf">
           <meta name="referrer" content="no-referrer">
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src \(purpose == .preview ? "'self' file:" : "'none'"); script-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
           <title>\(escape(documentTitle))</title>
           <style>\(styleSheet)</style>
         </head>
@@ -381,7 +381,7 @@ struct HTMLDocumentRenderer {
     }
 
     private func cssColor(_ color: NSColor) -> String {
-        guard let rgb = color.usingColorSpace(.sRGB) else { return "#000000" }
+        guard let rgb = color.usingColorSpace(.sRGB) else { return "#202124" }
         return String(
             format: "#%02X%02X%02X",
             Int(round(rgb.redComponent * 255)),
@@ -392,6 +392,7 @@ struct HTMLDocumentRenderer {
 
     private var styleSheet: String {
         """
+        \(previewFontFaceRule)
         :root {
           color-scheme: \(theme.isDark ? "dark" : "light");
           --canvas: \(cssColor(theme.canvas));
@@ -406,7 +407,7 @@ struct HTMLDocumentRenderer {
           --body-size: \(cssNumber(appearance.textSize))px;
           --body-leading: \(cssNumber(appearance.leading.lineHeight));
           --paper-width: \(cssNumber(appearance.measure.maximumWidth))px;
-          --reader: ui-serif, "New York", "Songti SC", "STSongti-SC-Regular", Georgia, serif;
+          --reader: "LXGW WenKai GB Lite", ui-serif, "New York", "Songti SC", "STSongti-SC-Regular", Georgia, serif;
           --utility: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
           --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
         }
@@ -424,16 +425,16 @@ struct HTMLDocumentRenderer {
           text-rendering: optimizeLegibility;
         }
         ::selection { color: var(--text); background: var(--selection); }
-        .reading-canvas { width: 100%; padding: 22px 28px 76px; }
+        .reading-canvas { width: 100%; padding: 16px 20px 64px; }
         .paper {
           width: min(100%, var(--paper-width));
-          min-height: calc(100vh - 44px);
+          min-height: calc(100vh - 32px);
           margin: 0 auto;
-          padding: 62px 68px 76px;
+          padding: 64px 72px 80px;
           background: var(--surface);
           border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-          border-radius: 7px;
-          box-shadow: 0 5px 24px \(theme.isDark ? "rgba(0,0,0,.22)" : "rgba(28,27,26,.07)");
+          border-radius: 16px;
+          box-shadow: 0 8px 30px \(theme.isDark ? "rgba(0,0,0,.24)" : "rgba(32,33,36,.06)");
           overflow-wrap: break-word;
         }
         h1, h2, h3, h4, h5, h6 {
@@ -447,19 +448,10 @@ struct HTMLDocumentRenderer {
         }
         h1:first-child, h2:first-child, h3:first-child { margin-top: 0; }
         h1 {
-          position: relative;
           margin-top: .15em;
-          padding: .08em 0 .12em 20px;
+          padding: .08em 0 .12em;
           font-size: 2.03rem;
           letter-spacing: -.022em;
-        }
-        h1::before {
-          position: absolute;
-          inset: .18em auto .16em 0;
-          width: 3px;
-          border-radius: 3px;
-          background: var(--accent);
-          content: "";
         }
         h2 { font-size: 1.52rem; letter-spacing: -.014em; }
         h3 { font-size: 1.24rem; }
@@ -487,6 +479,7 @@ struct HTMLDocumentRenderer {
           margin: 1.5em 0;
           padding: .85em 1.05em .9em 1.25em;
           border-left: 3px solid var(--warm);
+          border-radius: 0 10px 10px 0;
           background: color-mix(in srgb, var(--warm) 7%, transparent);
         }
         blockquote > :last-child { margin-bottom: 0; }
@@ -508,7 +501,7 @@ struct HTMLDocumentRenderer {
           margin-top: .37em;
           place-items: center;
           border: 1.5px solid var(--muted);
-          border-radius: 3px;
+          border-radius: 5px;
           color: var(--surface);
           font: 700 .72em/1 var(--utility);
         }
@@ -517,7 +510,7 @@ struct HTMLDocumentRenderer {
         :not(pre) > code {
           padding: .12em .36em .16em;
           border: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
-          border-radius: 4px;
+          border-radius: 6px;
           color: var(--accent);
           background: var(--code);
           font-size: .86em;
@@ -526,7 +519,7 @@ struct HTMLDocumentRenderer {
           margin: 1.55em 0;
           overflow: hidden;
           border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-          border-radius: 7px;
+          border-radius: 12px;
           background: var(--code);
         }
         .code-label {
@@ -549,7 +542,7 @@ struct HTMLDocumentRenderer {
           margin: 1.55em 0;
           overflow-x: auto;
           border: 1px solid var(--border);
-          border-radius: 6px;
+          border-radius: 12px;
         }
         table { width: 100%; border-collapse: collapse; font-family: var(--utility); font-size: .84em; line-height: 1.5; }
         th, td { min-width: 128px; padding: .68em .85em; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
@@ -560,7 +553,7 @@ struct HTMLDocumentRenderer {
         .align-right { text-align: right; }
         hr { margin: 2.1em 0; border: 0; border-top: 1px solid var(--border); }
         figure { margin: 1.7em 0; }
-        figure img { display: block; max-width: 100%; max-height: 560px; margin: 0 auto; border-radius: 4px; }
+        figure img { display: block; max-width: 100%; max-height: 560px; margin: 0 auto; border-radius: 12px; }
         figcaption { margin-top: .65em; color: var(--muted); font: .76em/1.5 var(--utility); text-align: center; }
         .image-placeholder {
           display: flex;
@@ -569,7 +562,7 @@ struct HTMLDocumentRenderer {
           margin: 1.35em 0;
           padding: .8em .9em;
           border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-          border-radius: 5px;
+          border-radius: 10px;
           background: var(--code);
           font: .84em/1.4 var(--utility);
         }
@@ -579,7 +572,7 @@ struct HTMLDocumentRenderer {
           margin: 1.45em 0;
           padding: .75em .85em .85em;
           border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
-          border-radius: 5px;
+          border-radius: 10px;
           background: var(--code);
         }
         .raw-html-label { color: var(--muted); font: 600 11px/1.4 var(--utility); }
@@ -594,7 +587,7 @@ struct HTMLDocumentRenderer {
           display: inline-block;
           min-width: 1.15em;
           padding: .1em .22em;
-          border-radius: 3px;
+          border-radius: 6px;
           text-align: center;
           text-decoration: none;
         }
@@ -621,7 +614,7 @@ struct HTMLDocumentRenderer {
         .footnotes li {
           margin: .75em 0;
           padding: .25em .35em .35em;
-          border-radius: 4px;
+          border-radius: 8px;
           scroll-margin-top: 24px;
         }
         .footnotes li::marker { color: var(--accent); font-weight: 650; }
@@ -645,12 +638,25 @@ struct HTMLDocumentRenderer {
         @media print {
           @page { margin: 18mm 17mm 20mm; }
           html, body { background: white; }
-          body { color: #1C1B1A; font-size: 11pt; }
+          body { color: #202124; font-size: 11pt; }
           .reading-canvas { padding: 0; }
           .paper { width: auto; min-height: 0; padding: 0; border: 0; box-shadow: none; }
           .code-block, blockquote, figure, table, .footnotes li { break-inside: avoid; }
-          a { color: inherit; text-decoration-color: #6F6E69; }
+          a { color: inherit; text-decoration-color: #59616C; }
           .footnote-ref a, .footnote-backref { text-decoration: none; }
+        }
+        """
+    }
+
+    private var previewFontFaceRule: String {
+        guard purpose == .preview else { return "" }
+        return """
+        @font-face {
+          font-family: "LXGW WenKai GB Lite";
+          src: url("Fonts/LXGWWenKaiGBLite-Regular.ttf") format("truetype");
+          font-style: normal;
+          font-weight: 100 900;
+          font-display: swap;
         }
         """
     }

@@ -52,7 +52,10 @@ final class HTMLPreviewIntegrationTests: XCTestCase {
             window.close()
         }
 
-        webView.loadHTMLString(renderer.render(source), baseURL: nil)
+        webView.loadHTMLString(
+            renderer.render(source),
+            baseURL: PlainleafTypography.bundledFontBaseURL
+        )
         await fulfillment(of: [loaded], timeout: 8)
         let initialValue = try await webView.evaluateJavaScript(HTMLPreviewNavigation.scrollSnapshotScript)
         let initialSnapshot = try XCTUnwrap(HTMLPreviewScrollSnapshot(javascriptValue: initialValue))
@@ -120,7 +123,10 @@ final class HTMLPreviewIntegrationTests: XCTestCase {
             window.close()
         }
 
-        webView.loadHTMLString(renderer.render(source), baseURL: nil)
+        webView.loadHTMLString(
+            renderer.render(source),
+            baseURL: PlainleafTypography.bundledFontBaseURL
+        )
         await fulfillment(of: [loaded], timeout: 8)
         let initialY = try await webView.evaluateJavaScript("window.scrollY") as? Double ?? 0
 
@@ -177,8 +183,17 @@ final class HTMLPreviewIntegrationTests: XCTestCase {
 
         let loaded = expectation(description: "WKWebView loads generated Plainleaf HTML")
         observer.didFinish = { loaded.fulfill() }
-        webView.loadHTMLString(renderer.render(source), baseURL: nil)
+        webView.loadHTMLString(
+            renderer.render(source),
+            baseURL: PlainleafTypography.bundledFontBaseURL
+        )
         await fulfillment(of: [loaded], timeout: 8)
+
+        try await Task.sleep(for: .milliseconds(200))
+        let hasBundledReadingFont = try await webView.evaluateJavaScript(
+            "document.fonts.check('17.5px \\\"LXGW WenKai GB Lite\\\"', '素页 Plainleaf')"
+        ) as? Bool
+        XCTAssertEqual(hasBundledReadingFont, true)
 
         let domLength = try await webView.evaluateJavaScript("document.documentElement.outerHTML.length") as? Int
         XCTAssertGreaterThan(domLength ?? 0, 1_000)

@@ -15,7 +15,7 @@ struct PlainleafRootView: View {
     var body: some View {
         NavigationSplitView {
             sidebar
-                .navigationSplitViewColumnWidth(min: 210, ideal: 258, max: 340)
+                .navigationSplitViewColumnWidth(min: 224, ideal: 272, max: 340)
         } detail: {
             detail
         }
@@ -23,22 +23,15 @@ struct PlainleafRootView: View {
         .tint(theme.accentColor)
         .preferredColorScheme(theme.isDark ? .dark : .light)
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                if model.workspace != nil {
-                    Button { model.createMarkdownFile() } label: {
-                        Label("New Markdown File", systemImage: "square.and.pencil")
-                    }
-                    .help("Create a Markdown file")
-                }
-
-                Picker("Theme", selection: $model.themePreference) {
+            ToolbarItem(placement: .primaryAction) {
+                Picker("Appearance", selection: $model.themePreference) {
                     ForEach(ThemePreference.allCases) { preference in
                         Label(preference.label, systemImage: preference.symbolName).tag(preference)
                     }
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .help("Choose Flexoki Light, Flexoki Dark, or follow the system appearance")
+                .help("Choose Light, Dark, or follow the system appearance")
             }
         }
         .alert("Plainleaf", isPresented: Binding(
@@ -56,32 +49,7 @@ struct PlainleafRootView: View {
         if let workspace = model.workspace {
             WorkspaceSidebar(model: model, workspace: workspace, theme: theme)
         } else {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 10) {
-                    PlainleafMark(size: 30, theme: theme)
-                    Text("PLAINLEAF")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .tracking(1.5)
-                }
-                .padding(.horizontal, 18)
-                .padding(.top, 22)
-
-                Spacer()
-
-                VStack(alignment: .leading, spacing: 9) {
-                    Text("No folder open")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text("Open a folder to see its Markdown files here.")
-                        .font(.caption)
-                        .foregroundStyle(theme.secondaryTextColor)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button("Open Folder…") { model.showOpenWorkspacePanel() }
-                        .buttonStyle(.borderedProminent)
-                }
-                .padding(18)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(theme.chromeColor)
+            EmptyWorkspaceSidebar(model: model, theme: theme)
         }
     }
 
@@ -96,6 +64,40 @@ struct PlainleafRootView: View {
     }
 }
 
+private struct EmptyWorkspaceSidebar: View {
+    @ObservedObject var model: AppModel
+    let theme: PlainleafTheme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PlainleafSidebarHeader(title: "Plainleaf", subtitle: "Markdown on your Mac", theme: theme)
+
+            Spacer()
+
+            VStack(spacing: 12) {
+                Image(systemName: "folder")
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundStyle(theme.secondaryTextColor)
+                    .accessibilityHidden(true)
+                Text("No folder open")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                Text("Choose a folder to see its Markdown files.")
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(theme.secondaryTextColor)
+                    .multilineTextAlignment(.center)
+                Button("Open folder") { model.showOpenWorkspacePanel() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+            }
+            .padding(24)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.chromeColor)
+    }
+}
+
 private struct WorkspaceSidebar: View {
     @ObservedObject var model: AppModel
     @ObservedObject var workspace: WorkspaceStore
@@ -103,98 +105,116 @@ private struct WorkspaceSidebar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 11) {
-                PlainleafMark(size: 31, theme: theme)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("PLAINLEAF")
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .tracking(1.4)
-                        .foregroundStyle(theme.secondaryTextColor)
+            HStack(spacing: 12) {
+                PlainleafMark(size: 28, theme: theme)
+                VStack(alignment: .leading, spacing: 2) {
                     Text(workspace.displayName)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14.5, weight: .semibold, design: .rounded))
                         .lineLimit(1)
+                    Text("Plainleaf")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(theme.secondaryTextColor)
                 }
-                Spacer()
-                Button {
-                    workspace.reload()
-                    model.refreshWorkspaceSearch()
+                Spacer(minLength: 8)
+                Menu {
+                    Button("Refresh notes", systemImage: "arrow.clockwise") {
+                        workspace.reload()
+                        model.refreshWorkspaceSearch()
+                    }
+                    Button("Open another folder", systemImage: "folder") {
+                        model.showOpenWorkspacePanel()
+                    }
                 } label: {
-                    Image(systemName: "arrow.clockwise")
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 30, height: 30)
+                        .background(theme.surfaceColor.opacity(0.72))
+                        .clipShape(Circle())
                 }
-                .buttonStyle(.plain)
-                .help("Refresh workspace")
-                .accessibilityLabel("Refresh workspace")
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Workspace actions")
+                .accessibilityLabel("Workspace actions")
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 15)
-
-            HStack {
-                Text("LIBRARY")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .tracking(1.2)
-                Spacer()
-                Text("\(workspace.markdownCount) \(workspace.markdownCount == 1 ? "NOTE" : "NOTES")")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-            }
-            .foregroundStyle(theme.secondaryTextColor)
-            .padding(.horizontal, 16)
-            .padding(.top, 9)
-            .padding(.bottom, 7)
+            .frame(height: 70)
 
             WorkspaceSearchField(model: model, theme: theme)
+
+            HStack {
+                Text(model.isWorkspaceSearchActive ? "Results" : "Notes")
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                Spacer()
+                Text(workspace.markdownCount.formatted())
+                    .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                    .foregroundStyle(theme.secondaryTextColor)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 7)
 
             if model.isWorkspaceSearchActive {
                 WorkspaceSearchResultsView(model: model, theme: theme)
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 2) {
+                    LazyVStack(alignment: .leading, spacing: 3) {
                         ForEach(workspace.nodes) { node in
                             WorkspaceNodeView(node: node, model: model, level: 0, theme: theme)
                         }
                     }
                     .padding(.horizontal, 8)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 10)
                 }
             }
 
             if !model.isWorkspaceSearchActive,
                model.mode != .source,
                let document = model.document {
-                Rectangle()
-                    .fill(theme.borderColor.opacity(0.75))
-                    .frame(height: 1)
-
-                DocumentOutlineSection(
-                    model: model,
-                    session: document,
-                    theme: theme
-                )
+                Divider().overlay(theme.borderColor.opacity(0.72))
+                DocumentOutlineSection(model: model, session: document, theme: theme)
             }
 
-            Rectangle()
-                .fill(theme.borderColor.opacity(0.75))
-                .frame(height: 1)
+            Divider().overlay(theme.borderColor.opacity(0.72))
 
-            HStack {
-                Button { model.createMarkdownFile() } label: {
-                    Label("New note", systemImage: "plus")
-                }
-                .buttonStyle(.plain)
-                Spacer()
-                Button { model.showOpenWorkspacePanel() } label: {
-                    Label("Switch folder", systemImage: "folder")
-                        .labelStyle(.iconOnly)
-                }
-                .buttonStyle(.plain)
-                .help("Open another folder")
-                .accessibilityLabel("Open another folder")
+            Button {
+                model.createMarkdownFile()
+            } label: {
+                Label("New note", systemImage: "square.and.pencil")
+                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 34)
+                    .foregroundStyle(theme.isDark ? Color(nsColor: theme.canvas) : Color.white)
+                    .background(theme.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(theme.secondaryTextColor)
-            .padding(.horizontal, 16)
-            .frame(height: 42)
+            .buttonStyle(.plain)
+            .padding(12)
+            .help("Create a Markdown file")
         }
         .background(theme.chromeColor)
+    }
+}
+
+private struct PlainleafSidebarHeader: View {
+    let title: String
+    let subtitle: String
+    let theme: PlainleafTheme
+
+    var body: some View {
+        HStack(spacing: 12) {
+            PlainleafMark(size: 28, theme: theme)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14.5, weight: .semibold, design: .rounded))
+                Text(subtitle)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(theme.secondaryTextColor)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 70)
     }
 }
 
@@ -204,6 +224,7 @@ private struct WorkspaceNodeView: View {
     let level: Int
     let theme: PlainleafTheme
     @State private var isExpanded = true
+    @State private var isHovered = false
 
     var body: some View {
         if node.isDirectory {
@@ -212,39 +233,42 @@ private struct WorkspaceNodeView: View {
                     WorkspaceNodeView(node: child, model: model, level: level + 1, theme: theme)
                 }
             } label: {
-                Label(node.name, systemImage: "folder.fill")
-                    .font(.system(size: 11.5, weight: .medium))
+                Label(node.name, systemImage: "folder")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(theme.secondaryTextColor)
                     .lineLimit(1)
-                    .padding(.vertical, 5)
+                    .padding(.vertical, 6)
             }
-            .padding(.leading, CGFloat(level) * 8)
+            .padding(.leading, CGFloat(level) * 9)
         } else {
             let selected = model.document?.url.standardizedFileURL == node.url.standardizedFileURL
             Button {
                 model.openDocument(node.url)
             } label: {
-                HStack(spacing: 7) {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(selected ? theme.accentColor : Color.clear)
-                        .frame(width: 3, height: 18)
-                    Image(systemName: "doc.text")
-                        .font(.system(size: 11))
+                HStack(spacing: 8) {
+                    Image(systemName: selected ? "doc.text.fill" : "doc.text")
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(selected ? theme.accentColor : theme.secondaryTextColor)
+                        .frame(width: 16)
                     Text(node.url.deletingPathExtension().lastPathComponent)
-                        .font(.system(size: 12.5, weight: selected ? .semibold : .regular))
+                        .font(.system(size: 12.5, weight: selected ? .semibold : .regular, design: .rounded))
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
+                .foregroundStyle(selected ? theme.textColor : theme.secondaryTextColor)
                 .contentShape(Rectangle())
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(selected ? theme.selectionColor : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .background {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(selected ? theme.selectionColor : (isHovered ? theme.surfaceColor.opacity(0.72) : Color.clear))
+                }
             }
             .buttonStyle(.plain)
-            .padding(.leading, CGFloat(level) * 8)
+            .padding(.leading, CGFloat(level) * 9)
+            .onHover { isHovered = $0 }
             .accessibilityLabel("Open \(node.name)")
+            .accessibilityAddTraits(selected ? .isSelected : [])
         }
     }
 }
@@ -257,81 +281,48 @@ private struct WelcomeView: View {
         ZStack {
             theme.canvasColor
 
-            HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("A QUIET PLACE FOR MARKDOWN")
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .tracking(1.6)
-                        .foregroundStyle(theme.accentColor)
-                    Text("Plain files,\nset in type.")
-                        .font(Font(PlainleafTypography.readingFont(size: 42, weight: .medium)))
-                        .tracking(-1.1)
-                        .padding(.top, 17)
-                    Text(model.workspace == nil
-                         ? "Open a folder. Plainleaf keeps every note as ordinary Markdown and works entirely on your Mac."
-                         : "Choose a note from the library to write in source or settle into reading mode.")
-                        .font(.system(size: 15))
-                        .foregroundStyle(theme.secondaryTextColor)
-                        .lineSpacing(4)
-                        .frame(maxWidth: 390, alignment: .leading)
-                        .padding(.top, 16)
-                    if model.workspace == nil {
-                        Button("Open a Markdown folder…") { model.showOpenWorkspacePanel() }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
-                            .padding(.top, 25)
+            VStack(spacing: 0) {
+                PlainleafMark(size: 54, theme: theme)
+                    .padding(17)
+                    .background(theme.surfaceColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(theme.borderColor.opacity(0.8), lineWidth: 1)
                     }
-                    Spacer()
-                    Label("Local only · No hidden metadata", systemImage: "lock")
-                        .font(.system(size: 10.5, design: .monospaced))
-                        .foregroundStyle(theme.secondaryTextColor)
-                }
-                .frame(maxWidth: .infinity, maxHeight: 500, alignment: .leading)
-                .padding(52)
+                    .shadow(color: Color(nsColor: theme.text).opacity(theme.isDark ? 0.13 : 0.06), radius: 20, y: 8)
 
-                PaperStack(theme: theme)
-                    .frame(width: 260, height: 360)
-                    .padding(.trailing, 62)
+                Text(model.workspace == nil ? "Your Markdown stays yours." : "Choose a note to begin.")
+                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .tracking(-0.7)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 28)
+
+                Text(model.workspace == nil
+                     ? "Open a folder and work with ordinary files, entirely on your Mac."
+                     : "Write in source, compare both views, or settle into reading.")
+                    .font(.system(size: 15))
+                    .foregroundStyle(theme.secondaryTextColor)
+                    .lineSpacing(3)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 440)
+                    .padding(.top, 12)
+
+                if model.workspace == nil {
+                    Button("Open folder") { model.showOpenWorkspacePanel() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .padding(.top, 24)
+                }
+
+                Label("Local files only. No hidden metadata.", systemImage: "lock.fill")
+                    .font(.system(size: 11.5, design: .rounded))
+                    .foregroundStyle(theme.secondaryTextColor)
+                    .padding(.top, 28)
             }
-            .frame(maxWidth: 980)
+            .padding(48)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-private struct PaperStack: View {
-    let theme: PlainleafTheme
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(theme.selectionColor)
-                .frame(width: 214, height: 286)
-                .rotationEffect(.degrees(5))
-                .offset(x: 15, y: 10)
-            RoundedRectangle(cornerRadius: 3)
-                .fill(theme.surfaceColor)
-                .frame(width: 214, height: 286)
-                .rotationEffect(.degrees(-3))
-                .shadow(color: .black.opacity(theme.isDark ? 0.22 : 0.10), radius: 16, y: 8)
-            VStack(alignment: .leading, spacing: 12) {
-                PlainleafMark(size: 36, theme: theme)
-                Spacer()
-                Rectangle().fill(theme.textColor).frame(width: 118, height: 5)
-                Rectangle().fill(theme.borderColor).frame(width: 150, height: 3)
-                Rectangle().fill(theme.borderColor).frame(width: 126, height: 3)
-                HStack(spacing: 5) {
-                    Circle().fill(theme.warmAccentColor).frame(width: 5, height: 5)
-                    Text("MARKDOWN")
-                        .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                        .tracking(1)
-                        .foregroundStyle(theme.secondaryTextColor)
-                }
-            }
-            .frame(width: 164, height: 228, alignment: .leading)
-            .rotationEffect(.degrees(-3))
-        }
-        .accessibilityHidden(true)
     }
 }
 

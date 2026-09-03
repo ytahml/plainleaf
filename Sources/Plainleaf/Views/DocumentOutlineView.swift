@@ -14,12 +14,11 @@ struct DocumentOutlineSection: View {
                 model.showsDocumentOutline.toggle()
             } label: {
                 HStack(spacing: 7) {
-                    Text("ON THIS PAGE")
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .tracking(1.2)
+                    Text("On this page")
+                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                     Spacer(minLength: 8)
                     Text("\(items.count)")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                     Image(systemName: model.showsDocumentOutline ? "chevron.down" : "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                 }
@@ -28,7 +27,7 @@ struct DocumentOutlineSection: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 16)
-            .frame(height: 39)
+            .frame(height: 40)
             .accessibilityLabel(model.showsDocumentOutline ? "Collapse document outline" : "Expand document outline")
 
             if model.showsDocumentOutline {
@@ -41,7 +40,7 @@ struct DocumentOutlineSection: View {
                 } else {
                     ScrollViewReader { proxy in
                         ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 2) {
+                            LazyVStack(alignment: .leading, spacing: 3) {
                                 ForEach(items) { item in
                                     outlineButton(for: item, minimumLevel: minimumLevel)
                                         .id(item.anchor)
@@ -73,18 +72,15 @@ struct DocumentOutlineSection: View {
             )
         } label: {
             HStack(spacing: 7) {
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(isActive
-                        ? theme.accentColor
-                        : (item.level == 1 ? theme.accentColor.opacity(0.45) : theme.borderColor))
-                    .frame(
-                        width: isActive ? 4 : 3,
-                        height: isActive ? 18 : (item.level == 1 ? 17 : 11)
-                    )
+                Image(systemName: isActive ? "circle.inset.filled" : "circle")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(isActive ? theme.accentColor : theme.borderColor)
+                    .frame(width: 12)
                 Text(item.title)
                     .font(.system(
                         size: item.level == 1 ? 12.5 : 11.5,
-                        weight: isActive || item.level <= 2 ? .semibold : .regular
+                        weight: isActive || item.level <= 2 ? .semibold : .regular,
+                        design: .rounded
                     ))
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
@@ -93,11 +89,11 @@ struct DocumentOutlineSection: View {
             .foregroundStyle(isActive || item.level == 1 ? theme.textColor : theme.secondaryTextColor)
             .contentShape(Rectangle())
             .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .padding(.vertical, 6)
             .background {
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .fill(isActive
-                        ? theme.accentColor.opacity(theme.isDark ? 0.13 : 0.08)
+                        ? theme.selectionColor
                         : Color.clear)
             }
         }
