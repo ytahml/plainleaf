@@ -89,6 +89,30 @@ struct HTMLPreviewScrollSnapshot: Equatable {
     }
 }
 
+struct HTMLPreviewRenderInput: Equatable {
+    let source: String
+    let documentURL: URL
+    let workspaceURL: URL
+    let theme: PlainleafTheme
+    let appearance: ReadingAppearance
+}
+
+struct HTMLPreviewRenderCache {
+    // ponytail: image-only disk edits refresh when the preview is reopened;
+    // add asset watching only if live image refresh becomes a product requirement.
+    private var input: HTMLPreviewRenderInput?
+
+    mutating func updatedHTML(for next: HTMLPreviewRenderInput) -> String? {
+        guard input != next else { return nil }
+        input = next
+        var renderer = HTMLDocumentRenderer(
+            documentURL: next.documentURL, workspaceURL: next.workspaceURL,
+            theme: next.theme, appearance: next.appearance
+        )
+        return renderer.render(next.source)
+    }
+}
+
 struct MarkdownReaderView: View {
     let source: String
     let documentURL: URL
@@ -159,14 +183,15 @@ private struct HTMLPreviewWebView: NSViewRepresentable {
         context.coordinator.syncEnabled = syncEnabled
         webView.underPageBackgroundColor = theme.canvas
 
-        var renderer = HTMLDocumentRenderer(
+        let input = HTMLPreviewRenderInput(
+            source: source,
             documentURL: documentURL,
             workspaceURL: workspaceURL,
             theme: theme,
             appearance: appearance
         )
-        let html = renderer.render(source)
-        if context.coordinator.loadedHTML != html {
+        if let html = context.coordinator.renderCache.updatedHTML(for: input),
+           context.coordinator.loadedHTML != html {
             context.coordinator.isReloadingContent = true
             let shouldPreserveScroll = context.coordinator.loadedDocumentURL == documentURL
             if !shouldPreserveScroll {
@@ -209,6 +234,7 @@ private struct HTMLPreviewWebView: NSViewRepresentable {
         var syncEnabled: Bool
         weak var webView: WKWebView?
         var loadedHTML: String?
+        var renderCache = HTMLPreviewRenderCache()
         var loadedDocumentURL: URL?
         var pendingScrollOffset: Double = 0
         var activePrintOperation: NSPrintOperation?

@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct PlainleafApp: App {
     @StateObject private var model = AppModel()
+    @NSApplicationDelegateAdaptor(PlainleafAppDelegate.self) private var appDelegate
 
     init() {
         PlainleafTypography.prepareBundledFonts()
@@ -12,11 +13,26 @@ struct PlainleafApp: App {
         WindowGroup {
             PlainleafRootView(model: model)
                 .frame(minWidth: 860, minHeight: 560)
+                .onAppear { appDelegate.model = model }
         }
         .commands {
             PlainleafCommands(model: model)
         }
         .defaultSize(width: 1120, height: 760)
+    }
+}
+
+@MainActor
+final class PlainleafAppDelegate: NSObject, NSApplicationDelegate {
+    weak var model: AppModel?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard model?.prepareToTerminate() != false else {
+            sender.activate(ignoringOtherApps: true)
+            sender.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
+            return .terminateCancel
+        }
+        return .terminateNow
     }
 }
 

@@ -30,13 +30,13 @@ Plainleaf is a local-first Markdown editor and reader for macOS. It opens a fold
 ## Build and test
 
 ```sh
-swift test
+swift test --force-resolved-versions
 swift build
 ./scripts/build-app.sh
 open build/Plainleaf.app
 ```
 
-The first public release is intentionally out of scope. The current bundle identifier is provisional and the generated app is ad-hoc signed for local use.
+The app is ad-hoc signed (no Developer ID or notarization). `./scripts/package-release.sh` produces a verified ZIP, SHA-256 checksums, licenses, and build provenance. CI tests and packages Apple silicon and Intel builds; version tags create a draft release for manual publication. See [`docs/RELEASING.md`](docs/RELEASING.md) for the complete process and installation limitations.
 
 The fixed checklist and current evidence are recorded in [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md) and [`docs/ACCEPTANCE_REPORT.md`](docs/ACCEPTANCE_REPORT.md).
 

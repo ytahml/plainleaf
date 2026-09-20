@@ -152,4 +152,16 @@ Evidence refreshed on 2026-08-31:
 
 ## Publication boundary
 
-The source repository is public on GitHub. The app itself remains a local Apple-silicon development build with an ad-hoc signature; it has not been Developer ID signed, notarized, tested on Intel, released, or submitted to the App Store.
+The source repository is public on GitHub. Local ARM64 and Intel cross-built packages use ad-hoc signatures; they have not been Developer ID signed, notarized, runtime-tested on Intel, released, or submitted to the App Store.
+
+## Optimization and release pipeline — 2026-09-20
+
+Scope: source inspection covered all application Swift files and the existing test suite; packaging inspection covered SwiftPM, resources, entitlements and licenses. Evidence applies to the uncommitted working tree based on `f3f724f`, not the original commit alone. Host: macOS 15.7.7 ARM64, Xcode 26.1.1, Swift 6.2.1.
+
+- Implementation: unchanged preview inputs now bypass parsing/highlighting/image encoding; source, document/workspace URL, theme and reading appearance each invalidate the cache. Normal application quit flushes pending edits and refuses to exit on conflict or save failure. Temporary test directories now use actual unique UUIDs.
+- Automated checks: `swift test --force-resolved-versions` passed **53 tests, 0 failures**, including real WebKit tests, independent preview-cache invalidation, pending-save flush, conflict refusal and unreadable-disk save failure. Final log: `build/verification-final.log`. `git diff --check`, zsh script syntax and workflow YAML parsing passed.
+- Packaging: native ARM64 and cross-built x86_64 Release ZIPs passed strict deep ad-hoc signature, entitlement, macOS 15.0 Mach-O/Info.plist, architecture, font/highlighter and license checks before and after ZIP extraction. SHA-256 checks passed. An ARM bundle supplied to the x86_64 verifier was correctly rejected (exit 1). Default `build/Plainleaf.app` is ARM64; previous bundles are retained under `build/previous.*`.
+- Local artifacts: `build/release.R2DTVf/Plainleaf-0.1.0-macos-arm64.zip` and `build/release.Hj2Hlg/Plainleaf-0.1.0-macos-x86_64.zip`; each directory includes checksums, release notes and build provenance. These ignored local paths are evidence for this run, not permanent download links.
+- CI configuration: macOS 15 ARM/Intel matrix, pinned Xcode and action revisions, resolved-dependency enforcement, tests, packaging and artifacts. Matching version tags create a draft Release only after both jobs pass. Hosted CI and draft creation have **not** been run; no commit, push, tag or public binary release was performed.
+- Manual boundary: no new packaged-app UI acceptance, Gatekeeper download/install check or Intel runtime test was performed in this pass. The added quit behavior still needs its checklist interaction on macOS 15.7; prior UI evidence is not promoted to fresh acceptance.
+- Remaining performance boundary: large-workspace recursive enumeration and document I/O still run synchronously on the main actor; large-dataset latency has not been measured. Async conversion is deferred to a measured follow-up because it changes workspace/save lifecycle ordering. Externally changing an image alone requires reopening preview. No unmeasured CPU or memory improvement percentage is claimed.

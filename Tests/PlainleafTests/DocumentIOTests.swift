@@ -34,6 +34,37 @@ final class DocumentIOTests: XCTestCase {
 
 @MainActor
 final class DocumentSessionTests: XCTestCase {
+    func testQuitFlushesPendingEditsAndRefusesExternalConflict() throws {
+        let selectionKey = "Plainleaf.SelectedDocument"
+        let previousSelection = UserDefaults.standard.object(forKey: selectionKey)
+        defer { UserDefaults.standard.set(previousSelection, forKey: selectionKey) }
+        try withTemporaryDirectory { directory in
+            let file = directory.appendingPathComponent("draft.md")
+            try Data("base".utf8).write(to: file)
+            let model = AppModel(restoreWorkspace: false)
+            model.openWorkspace(directory, persist: false)
+            model.openDocument(file)
+            let session = try XCTUnwrap(model.document)
+            session.text = "pending"
+            XCTAssertTrue(model.prepareToTerminate())
+            XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "pending")
+
+            session.text = "local"
+            try Data("external".utf8).write(to: file, options: [.atomic])
+            XCTAssertFalse(model.prepareToTerminate())
+            XCTAssertEqual(session.text, "local")
+            XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "external")
+            session.resolveUsingDiskVersion()
+            XCTAssertTrue(model.prepareToTerminate())
+
+            session.text = "still local"
+            try Data([0xff]).write(to: file, options: [.atomic])
+            XCTAssertFalse(model.prepareToTerminate())
+            XCTAssertEqual(session.text, "still local")
+            XCTAssertEqual(try Data(contentsOf: file), Data([0xff]))
+        }
+    }
+
     func testExplicitSaveWritesChangedText() throws {
         try withTemporaryDirectory { directory in
             let file = directory.appendingPathComponent("draft.md")
@@ -107,7 +138,7 @@ final class WorkspaceStoreTests: XCTestCase {
 
 private func withTemporaryDirectory(_ body: (URL) throws -> Void) throws {
     let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("PlainleafTests-(UUID().uuidString)", isDirectory: true)
+        .appendingPathComponent("PlainleafTests-\(UUID().uuidString)", isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: directory) }
     try body(directory)

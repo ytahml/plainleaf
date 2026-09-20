@@ -52,6 +52,12 @@ Plainleaf writes only:
 
 Autosave reads the current disk revision immediately before atomic replacement. A mismatch becomes a conflict instead of an overwrite.
 
+Application termination uses the same synchronous save/conflict gate as document switching. Pending edits are flushed before quitting; an unresolved conflict or failed save cancels termination and brings the document window forward. This does not protect against force quit or system failure.
+
+Preview updates cache the last source, document/workspace URLs, theme and reading appearance before parsing. Scroll synchronization and unrelated SwiftUI updates therefore skip Markdown parsing, highlighting and local image encoding. Changing an input renders again. Image-only external changes require reopening the preview; no background asset watcher is introduced.
+
+Build and release entry points are documented in [RELEASING.md](RELEASING.md). Packages retain exact dependency license files and are ad-hoc signed, verified before replacing the prior build, then checked again after ZIP extraction.
+
 ## macOS compatibility
 
 The package deployment target is macOS 15. APIs introduced after macOS 15 require availability checks and a macOS 15 implementation path.

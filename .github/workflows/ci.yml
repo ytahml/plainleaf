@@ -1,0 +1,93 @@
+name: Validate and package
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plainleaf-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.1.1.app/Contents/Developer
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check toolchain and release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          swift --version
+          xcodebuild -version
+          test "$(uname -m)" = "$ARCH"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Sources/Plainleaf/Resources/Info.plist)
+            test "$GITHUB_REF_NAME" = "v$version"
+          fi
+      - name: Test
+        run: swift test --force-resolved-versions
+      - name: Build, sign, verify and archive
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          directory=$(./scripts/package-release.sh)
+          echo "directory=$directory" >> "$GITHUB_OUTPUT"
+          git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Plainleaf-${{ matrix.arch }}
+          path: |
+            ${{ steps.package.outputs.directory }}/*.zip
+            ${{ steps.package.outputs.directory }}/*.txt
+            ${{ steps.package.outputs.directory }}/*.md
+          if-no-files-found: error
+          retention-days: 14
+
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: Plainleaf-*
+          path: release
+          merge-multiple: true
+      - name: Create draft with verified assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release
+          for sums in *-SHA256SUMS.txt; do sha256sum -c "$sums"; done
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --draft --title "Plainleaf $GITHUB_REF_NAME" \
+            --notes-file ../docs/RELEASE_NOTES.md ./*.zip ./*.txt ./*.md

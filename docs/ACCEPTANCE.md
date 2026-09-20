@@ -26,6 +26,7 @@
 - Typing, undo/redo, find, formatting shortcuts, autosave, and explicit save work.
 - An external edit reloads when the document is clean.
 - Concurrent local and external edits produce a visible conflict and do not overwrite either version.
+- Quit immediately after typing: the pending edit reaches disk before normal termination. With a conflict or save failure, quitting is cancelled and the document remains available.
 - HTML reading mode renders headings, mixed Chinese/English text, lists, tasks, tables, quotes, footnotes, local images, and fenced code.
 - Footnote numbers remain visually subordinate and keyboard-focusable; selecting a reference moves to its endnote, each return link moves to the exact occurrence, and both Light and Dark remain readable.
 - Reading appearance changes text size, line spacing, and page width live in Split and Read; keyboard shortcuts work, Source hides the irrelevant control, Reset restores the book defaults, and choices survive relaunch.
@@ -40,4 +41,4 @@
 
 ## Evidence boundary
 
-Passing automated checks does not imply the manual checklist passed. Local packaging does not imply signing, notarization, Intel compatibility, public release, or App Store readiness.
+Passing automated checks does not imply the manual checklist passed. Ad-hoc package verification does not imply Developer ID signing, notarization, Intel runtime compatibility, public release, or App Store readiness. Follow [RELEASING.md](RELEASING.md) for ZIP and publication checks.

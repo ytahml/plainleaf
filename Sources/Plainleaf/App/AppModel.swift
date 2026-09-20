@@ -45,7 +45,7 @@ final class AppModel: ObservableObject {
     private var workspaceSearchTask: Task<Void, Never>?
     private var documentTextObservation: AnyCancellable?
 
-    init() {
+    init(restoreWorkspace: Bool = true) {
         self.mode = ReadingMode(
             rawValue: UserDefaults.standard.string(forKey: DefaultsKey.readingMode) ?? ""
         ) ?? .source
@@ -57,7 +57,7 @@ final class AppModel: ObservableObject {
             : UserDefaults.standard.bool(forKey: DefaultsKey.documentOutline)
         self.readingAppearance = ReadingAppearance.restore()
 
-        if let restoredURL = WorkspaceStore.restoreLastWorkspace() {
+        if restoreWorkspace, let restoredURL = WorkspaceStore.restoreLastWorkspace() {
             openWorkspace(restoredURL, persist: false)
         }
     }
@@ -320,6 +320,14 @@ final class AppModel: ObservableObject {
         current.saveNow()
         if current.hasUnsavedChanges || current.hasConflict {
             notice = "Resolve or save the current document before opening another one."
+            return false
+        }
+        return true
+    }
+
+    func prepareToTerminate() -> Bool {
+        guard flushCurrentDocumentBeforeLeaving() else {
+            notice = "Plainleaf could not save your changes. Resolve the conflict or save the document before quitting."
             return false
         }
         return true
